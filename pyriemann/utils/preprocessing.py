@@ -1,3 +1,17 @@
+#!pip install pyriemann
+
+import scipy.io as sio
+import time
+import json
+import datetime
+import pickle
+import pyriemann as pr
+from pyriemann.tangentspace import TangentSpace
+import sklearn
+from sklearn.metrics.pairwise import chi2_kernel
+import numpy as np
+from scipy.signal import butter, lfilter
+
 def load_data(pname, directory):
     '''
     Gets a participants code and return the data.
@@ -38,93 +52,6 @@ def save_data(pname, dictionary):
 
     '''
     sio.savemat(f"/Volumes/Steam Library/LR_Data/Dataset 2/{pname}_short.mat", dictionary)
-
-
-def classify_MDM(X, y):
-    '''
-    Classifies a given data-set using the Riemannian manifold classifier.
-
-    Parameters
-    ----------
-    X: ndarray
-        EEG data, in format Ntrials x Nchannels X Nsamples
-    y: ndarray
-        corresponding labels for X
-
-    Returns
-    ----------
-    float
-        accuracy for the classification (5-fold crossvalidation)
-    '''
-    startcov = time.time()
-    cov = pr.estimation.Covariances().fit_transform(X)
-    endcov = time.time()
-    print(f"estimated covariances in {(endcov - startcov):.2f} seconds.")
-    startcov = time.time()
-
-    mdm = pr.classification.MDM(n_jobs=2)
-    accuracy = cross_val_score(mdm, cov, y)
-    endcov = time.time()
-    print(f"classify with MDM in {(endcov - startcov):.2f} seconds.")
-
-    return accuracy
-
-
-def classify(X, y, classifier_params):
-    '''
-    Classifies a given data-set on Riemannian manifold.
-
-    Parameters
-    ----------
-    X: ndarray
-        EEG data, in format Ntrials x Nchannels X Nsamples
-    y: ndarray
-        corresponding labels for X
-
-    Returns
-    ----------
-    float
-        accuracy for the classification (5-fold crossvalidation)
-    '''
-
-    classifier = classifier_params["classifier"]
-    params = classifier_params["params"]
-
-    startcov = time.time()
-
-    accuracy = cross_val_score(classifier(**params), X, y, n_jobs=2).mean()
-
-    endcov = time.time()
-    print(f"classify with {classifier.__name__} in {(endcov - startcov):.2f} seconds. result: {accuracy:.2f}")
-
-    return accuracy
-
-
-'''
-def classify_on_tangentspace(cov_ts, y, classifier, classifier_params):
-    """
-    Classifies a given data-set using the Riemannian manifold classifier.
-
-    Parameters
-    ----------
-    X: ndarray
-        EEG data, in format Ntrials x Nchannels X Nsamples
-    y: ndarray
-        corresponding labels for X
-
-    Returns
-    ----------
-    float
-        accuracy for the classification (5-fold crossvalidation)
-    """
-
-    startcov = time.time()
-    accuracy = cross_val_score(classifier(**classifier_params), cov_ts, y, n_jobs=2).mean()
-    endcov = time.time()
-    print(f"classify with {classifier.__name__} in {(endcov - startcov):.2f} seconds. result: {accuracy:.2f}")
-
-    return accuracy
-'''
 
 
 def make_sliding_subarrays(array, window_size, step_size):
@@ -248,28 +175,6 @@ def make_resdict(participant, intlength, stepsize, classifier_name, classifier_p
             "classifier_name": classifier_name,
             "classifier_params": classifier_params,
             "accuracy": accuracy}
-
-
-def runjob(subjects, mf_classifiers, ts_classifiers, intlength, stepsize, filename):
-    for subject in subjects:
-        print(f"participant {subject} (intlength: {intlength}, stepsize: {stepsize})")
-        emg, grasp, grasp_rep = load_data(subject)
-        X, y = make_Xy(emg, grasp, grasp_rep, intlength, stepsize)
-        cov = make_cov(X)
-        for mfc in mf_classifiers:
-            acc = classify(cov, y, mfc)
-            print(f"{mfc['classifier'].__name__} with {mfc['params']} - accuracy: {acc}")
-            resdict = make_resdict(subject, intlength, stepsize, mfc["classifier"].__name__, mfc["params"], acc)
-            append_to_pickle(filename, resdict)
-
-        ts_proj = ts_projection(cov)
-
-        for tsc in ts_classifiers:
-            acc = classify(ts_proj, y, tsc)
-            print(f"{tsc['classifier'].__name__} with {tsc['params']} - accuracy: {acc}")
-            resdict = make_resdict(subject, intlength, stepsize, tsc["classifier"].__name__, tsc["params"], acc)
-            append_to_pickle(filename, resdict)
-
 
 def make_sklearn_cv_idx(Xarr):
     cv = len(Xarr)
