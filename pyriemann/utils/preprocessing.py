@@ -1,110 +1,47 @@
-#!pip install pyriemann
 
-import scipy.io as sio
 import time
-import json
-import datetime
-import pickle
+
 import pyriemann as pr
 from pyriemann.tangentspace import TangentSpace
-import sklearn
-from sklearn.metrics.pairwise import chi2_kernel
 import numpy as np
-from scipy.signal import butter, lfilter
-
-def load_data(pname, directory):
-    '''
-    Gets a participants code and return the data.
-
-    Parameters
-    ----------
-    pname: str
-        code for participant (e.g. S010)
-
-    Returns
-    ----------
-    tuple of dictionaries
-        dictionaries with full data and auxillary data
-
-    '''
-    full_data = sio.loadmat(f"{directory}{pname}")
-
-    emg = full_data["emg"]
-    grasp = full_data["grasp"].flatten()
-    grasp_rep = full_data["grasprepetition"].flatten()
-    obj = full_data["object"].flatten()
-    objpart = full_data["objectpart"].flatten()
-    position = full_data["position"].flatten()
-    dynamic = full_data["dynamic"].flatten()
-    return emg, grasp, grasp_rep, obj, objpart, position, dynamic
 
 
-def save_data(pname, dictionary):
-    '''
-    Gets a participants code and dictionary and saves the data.
+def make_Xy(data, label, intlength=200, step_size=20):
+    labels = np.unique(label)
+    n_labels = labels.size
 
-    Parameters
-    ----------
-    pname: str
-        code for participant (e.g. S010)
-    dictionary: dict
-        dictionary for data
+    splitter = np.argwhere(np.diff(label) != 0)[:, 0] + 1
+    datasplit = np.split(data, splitter)
+    labelsplit = np.split(label, splitter)
 
-    '''
-    sio.savemat(f"/Volumes/Steam Library/LR_Data/Dataset 2/{pname}_short.mat", dictionary)
+    X = [[] for i in range(len(labelsplit))]
+    y = [[] for i in range(len(labelsplit))]
 
-
-def make_sliding_subarrays(array, window_size, step_size):
-    length = array.shape[0]
-    steps = int(np.ceil(min(window_size, length - window_size + 1) / step_size))
-    result = [[] for i in range(0, steps)]
-    for i in range(0, steps):
-        split = np.split(array, range(i * step_size, length, window_size), axis=0)
-        if len(split) > 1:
-            if split[0].shape[0] < window_size:
-                split = split[1:]
-            if split[-1].shape[0] < window_size:
-                split = split[:-1]
-            result[i] = np.array(split).swapaxes(1, 2)
-
+    for i, datachunk in enumerate(datasplit):
+        if datachunk.shape[0] < intlength:
+            X[i] = np.array([]).reshape((0, data.shape[1], intlength))
+            continue
         else:
-            print(split)
-            print(array)
-    return np.vstack(result)
+            length = datachunk.shape[0]
+            steps = int(np.ceil(min(intlength, length - intlength + 1) / step_size))
+            result = [[] for i in range(0, steps)]
+            for k in range(0, steps):
+                split = np.split(datachunk, range(k * step_size, length, intlength), axis=0)
+                if len(split) > 1:
+                    if split[0].shape[0] < intlength:
+                        split = split[1:]
+                    if split[-1].shape[0] < intlength:
+                        split = split[:-1]
+                    result[k] = np.array(split).swapaxes(1, 2)
 
+                else:
+                    print(split)
+                    print(array)
 
-def sliding_windows_X(emg, grasp, grasprepetition, intlength=1000, step_size=100):
-    valid_reps = grasprepetition >= 0
-    grasps = np.unique(grasp)
-    graspreps = np.unique(grasprepetition)
-
-    n_grasps = grasps.size
-    n_reps = graspreps.size
-    X = [[] for i in range(n_grasps)]
-    y = [[] for i in range(n_grasps)]
-
-    for i, g in enumerate(grasps):
-        for k, gr in enumerate(graspreps):
-            true_array = (valid_reps * (grasp == g) * (grasprepetition == gr))
-
-            data = emg[true_array, :]
-            if data.shape[0] < 400:
-                continue
-            else:
-                X[i].append(make_sliding_subarrays(data, intlength, step_size))
-                y[i].append(np.ones(X[i][-1].shape[0]) * g)
-        X[i] = np.concatenate(X[i])
-        y[i] = np.concatenate(y[i])
+            X[i] = np.vstack(result)
+            y[i] = (np.ones(X[i].shape[0]) * labelsplit[i][0])
     X = np.concatenate(X)
     y = np.concatenate(y)
-    return X, y
-
-
-def make_Xy(emg, grasp, grasp_rep, intlength=400, step_size=200):
-    start = time.time()
-    X, y = sliding_windows_X(emg, grasp, grasp_rep, intlength=intlength, step_size=step_size)
-    end = time.time()
-    # print(f"X,y sliding window time: {(end - start):.2f}s for {X.shape}")
     return X, y
 
 
@@ -116,7 +53,7 @@ def make_cov(X):
     return cov
 
 
-def make_cov_reg(X, regularizer='lwf'):
+def make_cov_reg(X, regularizer='oas'):
     startcov = time.time()
     cov = pr.estimation.Covariances(regularizer).fit_transform(X)
     endcov = time.time()
@@ -142,40 +79,6 @@ def ts_projection(cov_tr, cov_te=None, metric="riemann"):
         return ts_tr, ts_te
 
 
-def write_json(in_dict, filename):
-    js = json.dumps(in_dict)
-    f = open(f"/content/drive/My Drive/emgData/{filename}.json", "w")
-    f.write(js)
-    f.close()
-    f = open(f"/content/drive/My Drive/emgData/{filename}{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.json", "w")
-    f.write(js)
-    f.close()
-
-
-def write_pickle(filename, data, path="/content/drive/My Drive/emgData/results/"):
-    with open(f"{path}{filename}.pk", "wb") as fp:  # Pickling
-        pickle.dump(data, fp)
-
-
-def append_to_pickle(filename, data, path="/content/drive/My Drive/emgData/results/"):
-    with open(f"{path}{filename}.pk", "rb") as fp:  # Unpickling
-        b = pickle.load(fp)
-    with open(f"{path}{filename}{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.pk", "wb") as fp:  # Pickling
-        pickle.dump(b, fp)
-
-    b.append(data)
-    with open(f"{path}{filename}.pk", "wb") as fp:  # Pickling
-        pickle.dump(b, fp)
-
-
-def make_resdict(participant, intlength, stepsize, classifier_name, classifier_params, accuracy):
-    return {"participant": participant,
-            "intlength": intlength,
-            "stepsize": stepsize,
-            "classifier_name": classifier_name,
-            "classifier_params": classifier_params,
-            "accuracy": accuracy}
-
 def make_sklearn_cv_idx(Xarr):
     cv = len(Xarr)
     fullidx = np.arange(np.sum(Xarr))
@@ -191,88 +94,6 @@ def make_sklearn_cv_idx(Xarr):
     return np.array([train, test])
 
 
-def evaluate_subjects_n_fold_cv(subj_list, subj_dir, classification, folds=4):
-    for subj in subj_list:
-        startsubj = time.time()
-        emg, grasp, grasp_rep, obj, objpart, position, dynamic = load_data(subj, subj_dir)
-        valid_reps = (grasp_rep >= 0)
-        emg, grasp, grasp_rep, obj, objpart, position, dynamic = emg[valid_reps], grasp[valid_reps], grasp_rep[
-            valid_reps], obj[valid_reps], objpart[valid_reps], position[valid_reps], dynamic[valid_reps]
-        labels = [grasp + 500, obj + 500, position + 500, dynamic + 500, objpart + 500]
-
-        idx = cv_split_by_labels(labels, grasp_rep, folds)
-
-        Xy = np.array([make_Xy(emg[part], grasp[part], grasp_rep[part], 400, 40) for part in idx])
-        X = Xy[:, 0]
-        y = Xy[:, 1]
-        covs = [make_cov(split) for split in X]
-        train, test = make_sklearn_cv_idx([len(cov) for cov in covs])
-        data = np.concatenate(covs)
-        labels = np.concatenate(y)
-        print(data.shape)
-        print(labels.shape)
-
-        result = classification(data, labels, train, test)
-
-        end_subj = time.time()
-        print(f"{subj}: {result} in {end_subj - startsubj}s")
-
-        # print(f"{subj} {clf.cv_results_} in {end_subj-startsubj}s")
-        """
-        for k in range(folds):
-    
-          print(f"start cpu {k}")
-          starttime = time.time()
-    
-          cov_train = np.concatenate(np.delete(covs,k,axis=0))
-          cov_test = covs[k]
-    
-          y_train = np.concatenate(np.delete(y,k,axis=0))
-          y_test = y[k]
-    
-          if on_ts:
-            tr_data, te_data = ts_projection(cov_train, cov_test)
-            del cov_train, cov_test
-    
-          else:
-            tr_data = cov_train
-            te_data = cov_test
-    
-    
-          endtime = time.time()
-          print(f"done cpu {k} in {endtime-starttime}")
-          clf = sklearn.model_selection.GridSearchCV(classifier, classifier_params)
-          clf.fit(tr_data, y_train)
-    
-          scores.append(clf.best_score_(te_data, y_test))
-          print(f"subj {subj} leaveout {k} score {scores[k]}")
-        """
-        # del emg, grasp, grasp_rep, tr_data, te_data
-        # end_subj = time.time()
-        # print(f"{classifier} {np.mean(scores)} in {end_subj-startsubj}s")
-
-
-def cv_split_on_raw_data(grasp, folds=5):
-    unique = np.unique(grasp)
-    idx = np.array([np.array_split(np.where(grasp == g)[0], folds) for g in unique]).T
-    idx = np.array([np.concatenate(a) for a in idx])
-    return idx
-
-
-def butter_bandpass(lowcut, highcut, fs, order=3):
-    nyq = 0.5 * fs
-    low = lowcut / nyq
-    high = highcut / nyq
-    b, a = butter(order, [low, high], btype='band')
-    return b, a
-
-
-def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
-    b, a = butter_bandpass(lowcut, highcut, fs, order=order)
-    y = lfilter(b, a, data)
-    return y
-
-
 def cv_split_by_labels(labels, splitter, cv):
     new_labels = np.sum(np.array(np.array(labels).astype("str")).astype(object), axis=0)
     new_labels_unique = np.unique(new_labels)
@@ -284,112 +105,5 @@ def cv_split_by_labels(labels, splitter, cv):
             tmp = np.array(((new_labels == label) * (splitter == split))).flatten()
             idx[i % cv] += tmp
 
-    print(np.unique(idx))
-
     return idx.astype(bool)
 
-
-def riemann_inner_product(A, B, G=[]):
-    '''
-    G must be inverse of geometric mean we want to use
-    '''
-    A = A.reshape((12, 12))
-    B = B.reshape((12, 12))
-
-    if G == []:
-        return np.trace(A @ B)
-    return np.trace(G @ A @ G @ B)
-
-
-def proxy_kernel(X, Y, K):
-    gram_matrix = np.zeros((X.shape[0], Y.shape[0]))
-    for i, x in enumerate(X):
-        for j, y in enumerate(Y):
-            gram_matrix[i, j] = K(x, y)
-    return gram_matrix
-
-
-def riemann_kernel(X, Y=None):
-    if Y is None:
-        res = [[] for i in range(X.shape[0])]
-        for i, cov in enumerate(X):
-            A = np.matmul(X, cov, dtype=np.float32)
-            res[i] = A
-            del A
-        print("kernel loop done")
-        return res
-        # return np.array([np.matmul(cov,X) for cov in X])
-
-    return np.array([np.matmul(cov, X) for cov in Y])
-
-
-def gridsearch_classification(X, y, train, test, classifier, classifier_params):
-    # pipeline = sklearn.pipeline.make_pipeline(TangentSpace(metric="riemann"),classifier)
-
-    clf = sklearn.model_selection.GridSearchCV(classifier, classifier_params, cv=zip(train, test), n_jobs=-1, verbose=2)
-    clf.fit(X, y)
-
-    return clf.best_score_
-
-
-def paramsearch_classification(X, y, train, test, classifier, classifier_params):
-    # pipeline = sklearn.pipeline.make_pipeline(TangentSpace(metric="riemann"),classifier)
-
-    clf = sklearn.model_selection.GridSearchCV(classifier, classifier_params, cv=zip(train, test), n_jobs=-1, verbose=2)
-    clf.fit(X, y)
-
-    return clf.best_score_
-
-
-def single_param_classification(X, y, train, test, classifier, classifier_params):
-    # pipeline = sklearn.pipeline.make_pipeline(TangentSpace(metric="riemann"),classifier(**classifier_params))
-
-    cv_results = sklearn.model_selection.cross_val_score(classifier(**classifier_params), X.reshape((-1, 144)), y,
-                                                         cv=zip(train, test), n_jobs=-1, verbose=2)
-    return cv_results
-
-
-def riemannsvm_cv(X, y, train, test, classifier, classifier_params):
-    scores = []
-    for i, fold in enumerate(zip(train, test)):
-        X_train, X_test = X[fold[0]], X[fold[1]]
-        y_train, y_test = y[fold[0]], y[fold[1]]
-        print(X_train.shape)
-        print(X_test.shape)
-        G_mean = pr.utils.mean.mean_riemann(X_train)
-        Ginv = np.linalg.inv(G_mean)
-
-        X_train = np.matmul(X_train, Ginv)
-        X_test = np.matmul(X_test, Ginv)
-        print("X_train,X_test done")
-        K_train = riemann_kernel(X_train)
-        print("K_train done")
-        K_test = riemann_kernel(X_test, X_train)
-        print("K_test done")
-        del X_train
-        del X_test
-
-        clf = classifier(kernel="precomputed", **classifier_params)
-        clf.fit(K_train, y_train)
-
-        scores.append(clf.score(K_test, y_test))
-    return np.mean(scores)
-
-
-def chisquaredsvm_cv(X, y, train, test, classifier, classifier_params):
-    scores = []
-    for i, fold in enumerate(zip(train, test)):
-        X_train, X_test = X[fold[0]], X[fold[1]]
-        y_train, y_test = y[fold[0]], y[fold[1]]
-        print(X_train.shape)
-        print(X_test.shape)
-        ts_train, ts_test = np.abs(ts_projection(X_train, X_test))
-
-        clf = classifier(kernel='precomputed', **classifier_params)
-        K_train = chi2_kernel(ts_train, gamma=.5)
-
-        clf.fit(K_train, y_train)
-        K_test = chi2_kernel(ts_test, ts_train, gamma=.5)
-
-        scores.append(clf.score(K_test, y_test))
-    return np.mean(scores)
