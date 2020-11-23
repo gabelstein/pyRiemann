@@ -1,14 +1,32 @@
 
 import time
-
+import numpy as np
 import pyriemann as pr
 from pyriemann.tangentspace import TangentSpace
-import numpy as np
-
+import mne
+import scipy
 
 def make_Xy(data, label, intlength=200, step_size=20):
-    labels = np.unique(label)
-    n_labels = labels.size
+    """
+    This function creates sliding windows for multivariate data.
+    ----------
+    data : ndarray
+        multivariate data to turn into sliding windows based on the labels provided.
+        Dimension: nSamples x nChannels
+    label : ndarray
+        labels for the data.
+    intlength : int,
+        lenght of the sliding windows. The default is 200.
+    step_size : int,
+        size of step until next sliding window is calculated. The default is 20. Only produces exact overlapping windows
+        if intlength is an integer multiple of step_size.
+
+    Returns
+    -------
+    X,y : ndarray, ndarray
+        data turned into sliding windows and corresponding label for each data point.
+        Dimension: nSamples x nChannels x intlength
+    """
 
     splitter = np.argwhere(np.diff(label) != 0)[:, 0] + 1
     datasplit = np.split(data, splitter)
@@ -36,7 +54,7 @@ def make_Xy(data, label, intlength=200, step_size=20):
 
                 else:
                     print(split)
-                    print(array)
+                    print(datachunk)
 
             X[i] = np.vstack(result)
             y[i] = (np.ones(X[i].shape[0]) * labelsplit[i][0])
@@ -45,37 +63,23 @@ def make_Xy(data, label, intlength=200, step_size=20):
     return X, y
 
 
-def make_cov(X):
-    startcov = time.time()
-    cov = pr.estimation.Covariances().fit_transform(X)
-    endcov = time.time()
-
-    return cov
-
-
-def make_cov_reg(X, regularizer='oas'):
-    startcov = time.time()
-    cov = pr.estimation.Covariances(regularizer).fit_transform(X)
-    endcov = time.time()
-    # print(f"covariance estimation in {(endcov - startcov):.2f} seconds.")
+def make_cov(X, estimator='scm'):
+    cov = pr.estimation.Covariances(estimator).fit_transform(X)
     return cov
 
 
 def ts_projection(cov_tr, cov_te=None, metric="riemann"):
-    startcov = time.time()
     ts = TangentSpace(metric=metric)
     ref_fitter = ts.fit(cov_tr)
 
     if cov_te is None:
         ts_tr = ref_fitter.transform(cov_tr)
-        endcov = time.time()
         return ts_tr
 
     else:
         ts_tr = ref_fitter.transform(cov_tr)
         ts_te = ref_fitter.transform(cov_te)
 
-        endcov = time.time()
         return ts_tr, ts_te
 
 
@@ -107,3 +111,82 @@ def cv_split_by_labels(labels, splitter, cv):
 
     return idx.astype(bool)
 
+
+
+
+
+def calc_band_filters(f_ranges, sample_rate, filter_len=2001, l_trans_bandwidth=4, h_trans_bandwidth=4):
+    """
+    This function returns for the given frequency band ranges filter coefficients with with length "filter_len"
+    Thus the filters can be sequentially used for band power estimation
+    Parameters
+    ----------
+    f_ranges : TYPE
+        DESCRIPTION.
+    sample_rate : float
+        sampling frequency.
+    filter_len : int,
+        lenght of the filter. The default is 1001.
+    l_trans_bandwidth : TYPE, optional
+        DESCRIPTION. The default is 4.
+    h_trans_bandwidth : TYPE, optional
+        DESCRIPTION. The default is 4.
+    Returns
+    -------
+    filter_fun : array
+        filter coefficients stored in rows.
+    """
+    filter_fun = np.zeros([len(f_ranges), filter_len])
+
+    for a, f_range in enumerate(f_ranges):
+        h = mne.filter.create_filter(None, sample_rate, l_freq=f_range[0], h_freq=f_range[1],
+                                     fir_design='firwin', l_trans_bandwidth=l_trans_bandwidth,
+                                     h_trans_bandwidth=h_trans_bandwidth, filter_length='1000ms')
+
+        filter_fun[a, :] = h
+    return filter_fun
+
+
+def apply_filter(dat_, sample_rate, filter_fun, line_noise, variance=False, seglengths=None):
+    """
+    For a given channel, apply 4 notch line filters and apply previously calculated filters
+
+    Parameters
+    ----------
+    dat_ : array (ns,)
+        segment of data at a given channel and downsample index.
+    sample_rate : float
+        sampling frequency.
+    filter_fun : array
+        output of calc_band_filters.
+    line_noise : int|float
+        (in Hz) the line noise frequency.
+    seglengths : list
+        list of ints with the leght to which variance is calculated.
+        Used only if variance is set to True.
+    variance : bool,
+        If True, return the variance of the filtered signal, else
+        the filtered signal is returned.
+    Returns
+    -------
+    filtered : array
+        if variance is set to True: (nfb,) array with the resulted variance
+        at each frequency band, where nfb is the number of filter bands used to decompose the signal
+        if variance is set to False: (nfb, filter_len) array with the filtered signal
+        at each freq band, where nfb is the number of filter bands used to decompose the signal
+    """
+    dat_noth_filtered = mne.filter.notch_filter(x=dat_, Fs=sample_rate, trans_bandwidth=7,
+                                                freqs=np.arange(line_noise, 4 * line_noise, line_noise),
+                                                fir_design='firwin', notch_widths=1,
+                                                filter_length=dat_.shape[0] - 1)
+
+    filtered = []
+
+    for filt in range(filter_fun.shape[0]):
+        if variance:
+            filtered.append(np.var(scipy.signal.convolve(filter_fun[filt, :],
+                                                         dat_noth_filtered, mode='same')[-seglengths[filt]:]))
+        else:
+            filtered.append(scipy.signal.convolve(dat_noth_filtered, filter_fun[filt, :], mode='same'))
+
+    return np.array(filtered)
