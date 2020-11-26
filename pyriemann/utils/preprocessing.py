@@ -191,10 +191,12 @@ def apply_filter(dat_, sample_rate, filter_fun, line_noise, variance=False, segl
     filtered = []
 
     for data in dat_:
+        print(data.shape)
         dat_noth_filtered = mne.filter.notch_filter(x=data, Fs=sample_rate, trans_bandwidth=7,
                                                     freqs=np.arange(line_noise, 4 * line_noise, line_noise),
                                                     fir_design='firwin', notch_widths=1,
-                                                    filter_length=dat_.shape[0] - 1)
+                                                    filter_length=data.shape[0] - 1)
+        print(dat_noth_filtered.shape)
         filtered.append(scipy.signal.convolve(dat_noth_filtered, filter_fun[0, :], mode='same'))
 
     return np.array(filtered)
