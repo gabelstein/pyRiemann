@@ -1,12 +1,12 @@
-
-import time
 import numpy as np
 import pyriemann as pr
 from pyriemann.tangentspace import TangentSpace
 import mne
+from scipy.fft import fft, ifft
 import scipy
 
-def make_Xy(data, label, intlength=200, step_size=20):
+
+def make_Xy(data, label, intlength=200, step_size=20, adjust_class_size=True):
     """
     This function creates sliding windows for multivariate data.
     ----------
@@ -36,30 +36,34 @@ def make_Xy(data, label, intlength=200, step_size=20):
     y = [[] for i in range(len(labelsplit))]
 
     for i, datachunk in enumerate(datasplit):
-        if datachunk.shape[0] < intlength:
-            X[i] = np.array([]).reshape((0, data.shape[1], intlength))
-            continue
-        else:
-            length = datachunk.shape[0]
-            steps = int(np.ceil(min(intlength, length - intlength + 1) / step_size))
-            result = [[] for i in range(0, steps)]
-            for k in range(0, steps):
-                split = np.split(datachunk, range(k * step_size, length, intlength), axis=0)
-                if len(split) > 1:
-                    if split[0].shape[0] < intlength:
-                        split = split[1:]
-                    if split[-1].shape[0] < intlength:
-                        split = split[:-1]
-                    result[k] = np.array(split).swapaxes(1, 2)
-
-                else:
-                    print(split)
-                    print(datachunk)
-
-            X[i] = np.vstack(result)
-            y[i] = (np.ones(X[i].shape[0]) * labelsplit[i][0])
+        X[i] = np.array([datachunk[i*step_size:i*step_size+intlength].T for i in range(datachunk.shape[0]//step_size-intlength//step_size)])
+        y[i] = (np.ones(X[i].shape[0]) * labelsplit[i][0])
     X = np.concatenate(X)
     y = np.concatenate(y)
+
+    if adjust_class_size:
+        sizes = {}
+        y_vals = np.unique(y)
+
+        for y_val in y_vals:
+            sizes.update({y_val: np.sum([y == y_val])})
+
+        key_min = min(sizes.keys(), key=(lambda k: sizes[k]))
+        minimum_class = sizes[key_min]
+
+        X_new = [[] for i in y_vals]
+        y_new = [[] for i in y_vals]
+        np.random.seed(10)
+
+        for i, y_val in enumerate(sizes):
+            idx = np.random.choice(sizes[y_val], minimum_class, replace=False)
+            labelidx = (y == y_val)
+
+            X_new[i] = (X[labelidx])[idx]
+            y_new[i] = (y[labelidx])[idx]
+        X_new = np.concatenate(X_new)
+        y_new = np.concatenate(y_new)
+        return X_new, y_new
     return X, y
 
 
@@ -112,10 +116,7 @@ def cv_split_by_labels(labels, splitter, cv):
     return idx.astype(bool)
 
 
-
-
-
-def calc_band_filters(f_ranges, sample_rate, filter_len=2001, l_trans_bandwidth=4, h_trans_bandwidth=4):
+def calc_band_filters(f_ranges, sample_rate, filter_len=2001, l_trans_bandwidth=4, h_trans_bandwidth=4, joined=True):
     """
     This function returns for the given frequency band ranges filter coefficients with with length "filter_len"
     Thus the filters can be sequentially used for band power estimation
@@ -144,7 +145,17 @@ def calc_band_filters(f_ranges, sample_rate, filter_len=2001, l_trans_bandwidth=
                                      h_trans_bandwidth=h_trans_bandwidth, filter_length='1000ms')
 
         filter_fun[a, :] = h
-    return filter_fun
+
+    if joined:
+        ffts = [fft(filt) for filt in filter_fun]
+
+        sum_fft = np.sum(ffts, axis=0)
+        filter_joined = np.real(ifft(sum_fft))
+
+        return np.array([filter_joined])
+
+    else:
+        return filter_fun
 
 
 def apply_filter(dat_, sample_rate, filter_fun, line_noise, variance=False, seglengths=None):
