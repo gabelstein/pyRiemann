@@ -36,7 +36,10 @@ def make_Xy(data, label, intlength=200, step_size=20, adjust_class_size=True):
     y = [[] for i in range(len(labelsplit))]
 
     for i, datachunk in enumerate(datasplit):
-        X[i] = np.array([datachunk[i*step_size:i*step_size+intlength].T for i in range(datachunk.shape[0]//step_size-intlength//step_size)])
+        X[i] = np.array([datachunk[i*step_size:i*step_size+intlength].T
+                         for i in range(datachunk.shape[0]//step_size-intlength//step_size)]
+                        ).reshape((-1, datachunk.shape[1], intlength))
+        
         y[i] = (np.ones(X[i].shape[0]) * labelsplit[i][0])
     X = np.concatenate(X)
     y = np.concatenate(y)
