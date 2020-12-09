@@ -174,14 +174,18 @@ def apply_filter(dat_, sample_rate, filter_fun, line_noise, variance=False, segl
         if variance is set to False: (nfb, filter_len) array with the filtered signal
         at each freq band, where nfb is the number of filter bands used to decompose the signal
     """
-
+    dat_noth_filtered = mne.filter.notch_filter(x=dat_, Fs=sample_rate, trans_bandwidth=7,
+                                                freqs=np.arange(line_noise, 4 * line_noise, line_noise),
+                                                fir_design='firwin', verbose=None, notch_widths=1,
+                                                filter_length=dat_.shape[0] - 1)
 
     filtered = []
 
-    for data in dat_:
-        dat_noth_filtered = mne.filter.notch_filter(x=data, Fs=sample_rate, trans_bandwidth=7,
-                                                    freqs=np.arange(line_noise, 4 * line_noise, line_noise),
-                                                    fir_design='firwin', notch_widths=1,
-                                                    filter_length=data.shape[0] - 1)
-        filtered.append(scipy.signal.convolve(dat_noth_filtered, filter_fun[0, :], mode='same'))
+    for filt in range(filter_fun.shape[0]):
+        if variance:
+            filtered.append(np.var(scipy.signal.convolve(filter_fun[filt, :],
+                                                         dat_noth_filtered, mode='same')[-seglengths[filt]:]))
+        else:
+            filtered.append(scipy.signal.convolve(dat_noth_filtered, filter_fun[filt, :], mode='same'))
+
     return np.array(filtered)
