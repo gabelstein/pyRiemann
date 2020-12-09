@@ -27,6 +27,10 @@ def make_Xy(data, label, intlength=200, step_size=20, adjust_class_size=True):
         data turned into sliding windows and corresponding label for each data point.
         Dimension: nSamples x nChannels x intlength
     """
+    classes,class_counts =  np.unique(label, return_counts=True)
+    min_class = np.min(class_counts)
+    class_ratios = class_counts/min_class
+    ratio_dict = dict(zip(classes,class_ratios))
 
     splitter = np.argwhere(np.diff(label) != 0)[:, 0] + 1
     datasplit = np.split(data, splitter)
@@ -36,37 +40,19 @@ def make_Xy(data, label, intlength=200, step_size=20, adjust_class_size=True):
     y = [[] for i in range(len(labelsplit))]
 
     for i, datachunk in enumerate(datasplit):
-        X[i] = np.array([datachunk[i*step_size:i*step_size+intlength].T
-                         for i in range(datachunk.shape[0]//step_size-intlength//step_size)]
+        if adjust_class_size:
+          step = step_size*ratio_dict[labelsplit[i][0]].astype(int)
+          print(step)
+        else:
+          step = step_size
+        X[i] = np.array([datachunk[i*step:i*step+intlength].T
+                         for i in range(datachunk.shape[0]//step-intlength//step)]
                         ).reshape((-1, datachunk.shape[1], intlength))
-        
+
         y[i] = (np.ones(X[i].shape[0]) * labelsplit[i][0])
     X = np.concatenate(X)
     y = np.concatenate(y)
 
-    if adjust_class_size:
-        sizes = {}
-        y_vals = np.unique(y)
-
-        for y_val in y_vals:
-            sizes.update({y_val: np.sum([y == y_val])})
-
-        key_min = min(sizes.keys(), key=(lambda k: sizes[k]))
-        minimum_class = sizes[key_min]
-
-        X_new = [[] for i in y_vals]
-        y_new = [[] for i in y_vals]
-        np.random.seed(10)
-
-        for i, y_val in enumerate(sizes):
-            idx = np.random.choice(sizes[y_val], minimum_class, replace=False)
-            labelidx = (y == y_val)
-
-            X_new[i] = (X[labelidx])[idx]
-            y_new[i] = (y[labelidx])[idx]
-        X_new = np.concatenate(X_new)
-        y_new = np.concatenate(y_new)
-        return X_new, y_new
     return X, y
 
 
