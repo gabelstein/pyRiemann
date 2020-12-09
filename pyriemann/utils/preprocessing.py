@@ -42,7 +42,6 @@ def make_Xy(data, label, intlength=200, step_size=20, adjust_class_size=True):
     for i, datachunk in enumerate(datasplit):
         if adjust_class_size:
           step = step_size*ratio_dict[labelsplit[i][0]].astype(int)
-          print(step)
         else:
           step = step_size
         X[i] = np.array([datachunk[i*step:i*step+intlength].T
