@@ -1,4 +1,5 @@
 import numpy
+from numba import njit, prange
 from .base import sqrtm, invsqrtm, logm, expm
 from .mean import mean_covariance
 ###############################################################
@@ -29,6 +30,39 @@ def tangent_space(covmats, Cref):
         tmp = numpy.dot(numpy.dot(Cm12, covmats[index, :, :]), Cm12)
         tmp = logm(tmp)
         T[index, :] = numpy.multiply(coeffs, tmp[idx])
+    return T
+
+
+def tangent_space_par(covmats, Cref):
+    """Project a set of covariance matrices in the tangent space. according to
+    the reference point Cref
+
+    :param covmats: np.ndarray
+        Covariance matrices set, Ntrials X Nchannels X Nchannels
+    :param Cref: np.ndarray
+        The reference covariance matrix
+    :returns: np.ndarray
+        the Tangent space , a matrix of Ntrials X (Nchannels*(Nchannels+1)/2)
+
+    """
+    Nt, Ne, Ne = covmats.shape
+    Cm12 = invsqrtm(Cref)
+    idx = numpy.triu_indices_from(Cref)
+    Nf = int(Ne * (Ne + 1) / 2)
+    coeffs = (numpy.sqrt(2) * numpy.triu(numpy.ones((Ne, Ne)), 1) +
+              numpy.eye(Ne))
+
+    T = make_T(covmats,Cm12,Nt,Ne,coeffs)
+    return T[:, idx[0], idx[1]]
+
+
+@njit(parallel=True)
+def make_T(covmats, Cm12, Nt, Ne, coeffs):
+    T = numpy.empty((Nt, Ne, Ne))
+    for index in prange(Nt):
+        tmp = numpy.dot(numpy.dot(Cm12, covmats[index]), Cm12)
+        tmp = logm(tmp)
+        T[index] = numpy.multiply(coeffs, tmp)
     return T
 
 

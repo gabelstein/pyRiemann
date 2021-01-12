@@ -1,11 +1,13 @@
 """Mean covariance estimation."""
 import numpy
+from numba import jit, njit, prange
+from joblib import Parallel, delayed
 
 from .base import sqrtm, invsqrtm, logm, expm
 from .ajd import ajd_pham
 from .distance import distance_riemann
 from .geodesic import geodesic_riemann
-
+from numpy.core.numerictypes import typecodes
 
 def _get_sample_weight(sample_weight, data):
     """Get the sample weights.
@@ -70,6 +72,64 @@ def mean_riemann(covmats, tol=10e-9, maxiter=50, init=None,
             nu = 0.5 * nu
 
     return C
+
+
+def mean_riemann_par(covmats, tol=10e-9, maxiter=50, init=None,
+                 sample_weight=None):
+    """Return the mean covariance matrix according to the Riemannian metric.
+
+    The procedure is similar to a gradient descent minimizing the sum of
+    riemannian distance to the mean.
+
+    .. math::
+            \mathbf{C} = \\arg\min{(\sum_i \delta_R ( \mathbf{C} , \mathbf{C}_i)^2)}  # noqa
+
+    :param covmats: Covariance matrices set, Ntrials X Nchannels X Nchannels
+    :param tol: the tolerance to stop the gradient descent
+    :param maxiter: The maximum number of iteration, default 50
+    :param init: A covariance matrix used to initialize the gradient descent. If None the Arithmetic mean is used
+    :param sample_weight: the weight of each sample
+    :returns: the mean covariance matrix
+
+    """
+    # init
+    sample_weight = _get_sample_weight(sample_weight, covmats)
+    Nt, Ne, Ne = covmats.shape
+    if init is None:
+        C = numpy.mean(covmats, axis=0)
+    else:
+        C = init
+    k = 0
+    nu = 1.0
+    tau = numpy.finfo(numpy.float64).max
+    crit = numpy.finfo(numpy.float64).max
+    # stop when J<10^-9 or max iteration = 50
+    while (crit > tol) and (k < maxiter) and (nu > tol):
+        k = k + 1
+        C12 = sqrtm(C)
+        Cm12 = invsqrtm(C)
+
+        J = make_J(covmats, Cm12, Nt, Ne, sample_weight)
+
+        crit = numpy.linalg.norm(J, ord='fro')
+        h = nu * crit
+        C = numpy.dot(numpy.dot(C12, expm(nu * J)), C12)
+        if h < tau:
+            nu = 0.95 * nu
+            tau = h
+        else:
+            nu = 0.5 * nu
+
+    return C
+
+
+@njit(parallel = True)
+def make_J(covmats, Cm12,Nt, Ne, sample_weight):
+    J = numpy.zeros((Ne, Ne))
+    for index in prange(Nt):
+        tmp = numpy.dot(numpy.dot(Cm12, covmats[index]), Cm12)
+        J += sample_weight[index] * logm(tmp)
+    return J
 
 
 def mean_logeuclid(covmats, sample_weight=None):

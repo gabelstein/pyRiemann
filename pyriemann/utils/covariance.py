@@ -1,4 +1,5 @@
 import numpy
+import multiprocessing
 from sklearn.covariance import oas, ledoit_wolf, fast_mcd, empirical_covariance
 
 # Mapping different estimator on the sklearn toolbox
@@ -59,9 +60,18 @@ def covariances(X, estimator='cov'):
     est = _check_est(estimator)
     Nt, Ne, Ns = X.shape
     covmats = numpy.zeros((Nt, Ne, Ne))
+
     for i in range(Nt):
         covmats[i, :, :] = est(X[i, :, :])
     return covmats
+
+def covariances_par(X, estimator='cov'):
+    """Estimation of covariance matrix."""
+    est = _check_est(estimator)
+    pool = multiprocessing.Pool(2)
+    covmats = numpy.array(pool.map(est, X))
+    return covmats
+
 
 
 def covariances_EP(X, P, estimator='cov'):
