@@ -76,7 +76,7 @@ class TangentSpace(BaseEstimator, TransformerMixin):
         self.metric = metric
         self.tsupdate = tsupdate
 
-    def fit(self, X, y=None, sample_weight=None):
+    def fit(self, X, y=None, sample_weight=numpy.empty(0)):
         """Fit (estimates) the reference point.
 
         Parameters
@@ -145,7 +145,7 @@ class TangentSpace(BaseEstimator, TransformerMixin):
             Cr = self.reference_
         return tangent_space(X, Cr)
 
-    def fit_transform(self, X, y=None, sample_weight=None):
+    def fit_transform(self, X, y=None, sample_weight=numpy.empty(0)):
         """Fit and transform in a single function.
 
         Parameters
@@ -230,7 +230,7 @@ class FGDA(BaseEstimator, TransformerMixin):
         self.metric = metric
         self.tsupdate = tsupdate
 
-    def _fit_lda(self, X, y, sample_weight=None):
+    def _fit_lda(self, X, y, sample_weight=numpy.empty(0)):
         """Helper to fit LDA."""
         self.classes_ = numpy.unique(y)
         self._lda = LDA(n_components=len(self.classes_) - 1,
@@ -250,7 +250,7 @@ class FGDA(BaseEstimator, TransformerMixin):
         ts = numpy.dot(ts, self._W)
         return self._ts.inverse_transform(ts)
 
-    def fit(self, X, y=None, sample_weight=None):
+    def fit(self, X, y=None, sample_weight=numpy.empty(0)):
         """Fit (estimates) the reference point and the FLDA.
 
         Parameters
@@ -287,7 +287,7 @@ class FGDA(BaseEstimator, TransformerMixin):
         ts = self._ts.transform(X)
         return self._retro_project(ts)
 
-    def fit_transform(self, X, y=None, sample_weight=None):
+    def fit_transform(self, X, y=None, sample_weight=numpy.empty(0)):
         """Fit and transform in a single function.
 
         Parameters

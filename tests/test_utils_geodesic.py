@@ -70,7 +70,7 @@ def test_geodesic_riemann():
     A = 0.5*np.eye(3)
     B = 2*np.eye(3)
     Ctrue = 1*np.eye(3)
-    assert_array_almost_equal(geodesic(A,B,0.5,metric='riemann'),Ctrue)
+    assert_array_almost_equal(geodesic(A, B, 0.5, metric='riemann'), Ctrue)
     
 def test_geodesic_euclid():
     """Test euclidean geodesic when alpha = 0.5 for global function"""

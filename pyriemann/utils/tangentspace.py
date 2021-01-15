@@ -1,5 +1,6 @@
 import numpy
 from numba import njit, prange
+
 from .base import sqrtm, invsqrtm, logm, expm
 from .mean import mean_covariance
 ###############################################################
@@ -27,13 +28,13 @@ def tangent_space(covmats, Cref):
     coeffs = (numpy.sqrt(2) * numpy.triu(numpy.ones((Ne, Ne)), 1) +
               numpy.eye(Ne))[idx]
     for index in range(Nt):
-        tmp = numpy.dot(numpy.dot(Cm12, covmats[index, :, :]), Cm12)
+        tmp = numpy.dot(numpy.dot(Cm12, covmats[index]), Cm12)
         tmp = logm(tmp)
-        T[index, :] = numpy.multiply(coeffs, tmp[idx])
+        T[index] = numpy.multiply(coeffs, tmp[idx])
     return T
 
-
-def tangent_space_par(covmats, Cref):
+@njit
+def tangent_space(covmats, Cref):
     """Project a set of covariance matrices in the tangent space. according to
     the reference point Cref
 
@@ -48,20 +49,23 @@ def tangent_space_par(covmats, Cref):
     Nt, Ne, Ne = covmats.shape
     Cm12 = invsqrtm(Cref)
     idx = numpy.triu_indices_from(Cref)
+    flatidx = idx[0]*Ne + idx[1] #because numba cant handle double indexing
     Nf = int(Ne * (Ne + 1) / 2)
     coeffs = (numpy.sqrt(2) * numpy.triu(numpy.ones((Ne, Ne)), 1) +
-              numpy.eye(Ne))
+              numpy.eye(Ne)).flatten()[flatidx]
 
-    T = make_T(covmats,Cm12,Nt,Ne,coeffs)
-    return T[:, idx[0], idx[1]]
+    T = make_T(covmats, Cm12, Nt, Nf, coeffs, flatidx)
+
+    return T
 
 
 @njit(parallel=True)
-def make_T(covmats, Cm12, Nt, Ne, coeffs):
-    T = numpy.empty((Nt, Ne, Ne))
+def make_T(covmats, Cm12, Nt, Nf, coeffs, flatidx):
+    T = numpy.empty((Nt, Nf))
+
     for index in prange(Nt):
         tmp = numpy.dot(numpy.dot(Cm12, covmats[index]), Cm12)
-        tmp = logm(tmp)
+        tmp = logm(tmp).flatten()[flatidx]
         T[index] = numpy.multiply(coeffs, tmp)
     return T
 
@@ -92,7 +96,7 @@ def untangent_space(T, Cref):
 
     return covmats
 
-
+@njit(parallel=True)
 def transport(Covs, Cref, metric='riemann'):
     """Parallel transport of two set of covariance matrix.
 
@@ -100,5 +104,7 @@ def transport(Covs, Cref, metric='riemann'):
     C = mean_covariance(Covs, metric=metric)
     iC = invsqrtm(C)
     E = sqrtm(numpy.dot(numpy.dot(iC, Cref), iC))
-    out = numpy.array([numpy.dot(numpy.dot(E, c), E.T) for c in Covs])
+    out = numpy.zeros((Covs.shape))
+    for i in prange(Covs.shape[0]):
+        out[i] = numpy.dot(numpy.dot(E, Covs[i]), E.T)
     return out

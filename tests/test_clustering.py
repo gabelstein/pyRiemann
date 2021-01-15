@@ -40,10 +40,6 @@ def test_Kmeans_init():
     # transform
     km.transform(covset)
 
-    # n_jobs
-    km = Kmeans(2, n_jobs=2)
-    km.fit(covset)
-
 
 def test_KmeansPCT_init():
     """Test Kmeans PCT"""

@@ -1,7 +1,9 @@
 """Aproximate joint diagonalization algorithm."""
 import numpy as np
+from numba import njit, prange
 
 
+@njit(parallel=True)
 def rjd(X, eps=1e-8, n_iter_max=1000):
     """Approximate joint diagonalization based on jacobi angle.
 
@@ -44,7 +46,12 @@ def rjd(X, eps=1e-8, n_iter_max=1000):
     """
 
     # reshape input matrix
-    A = np.concatenate(X, 0).T
+    Nt, Ne, Ne = X.shape
+    Xconc = np.zeros((Nt * Ne, Ne))
+    for i in range(Nt):
+        for j in range(Ne):
+            Xconc[i * Ne + j] = X[i][j]
+    A = Xconc.T
 
     # init variables
     m, nm = A.shape
@@ -57,39 +64,40 @@ def rjd(X, eps=1e-8, n_iter_max=1000):
         k += 1
         if k > n_iter_max:
             break
-        for p in range(m - 1):
-            for q in range(p + 1, m):
+        for p in prange(m - 1):
+            for q in prange(p + 1, m):
 
                 Ip = np.arange(p, nm, m)
                 Iq = np.arange(q, nm, m)
 
                 # computation of Givens angle
-                g = np.array([A[p, Ip] - A[q, Iq], A[p, Iq] + A[q, Ip]])
+                g = np.vstack((A[p][Ip] - A[q][Iq], A[p][Iq] + A[q][Ip]))
                 gg = np.dot(g, g.T)
-                ton = gg[0, 0] - gg[1, 1]
-                toff = gg[0, 1] + gg[1, 0]
+                ton = gg[0][0] - gg[1][1]
+                toff = gg[0][1] + gg[1][0]
                 theta = 0.5 * np.arctan2(toff, ton +
                                          np.sqrt(ton * ton + toff * toff))
                 c = np.cos(theta)
                 s = np.sin(theta)
                 encore = encore | (np.abs(s) > eps)
                 if (np.abs(s) > eps):
-                    tmp = A[:, Ip].copy()
-                    A[:, Ip] = c * A[:, Ip] + s * A[:, Iq]
-                    A[:, Iq] = c * A[:, Iq] - s * tmp
+                    tmp = A[:][Ip].copy()
+                    A[:][Ip] = c * A[:][Ip] + s * A[:, Iq]
+                    A[:][Iq] = c * A[:][Iq] - s * tmp
 
-                    tmp = A[p, :].copy()
-                    A[p, :] = c * A[p, :] + s * A[q, :]
-                    A[q, :] = c * A[q, :] - s * tmp
+                    tmp = A[p][:].copy()
+                    A[p][:] = c * A[p][:] + s * A[q][:]
+                    A[q][:] = c * A[q][:] - s * tmp
 
-                    tmp = V[:, p].copy()
-                    V[:, p] = c * V[:, p] + s * V[:, q]
-                    V[:, q] = c * V[:, q] - s * tmp
+                    tmp = V[:][p].copy()
+                    V[:][p] = c * V[:][p] + s * V[:][q]
+                    V[:][q] = c * V[:][q] - s * tmp
 
     D = np.reshape(A, (m, int(nm / m), m)).transpose(1, 0, 2)
     return V, D
 
 
+@njit(parallel=True)
 def ajd_pham(X, eps=1e-6, n_iter_max=15):
     """Approximate joint diagonalization based on pham's algorithm.
 
@@ -131,25 +139,30 @@ def ajd_pham(X, eps=1e-6, n_iter_max=15):
     n_epochs = X.shape[0]
 
     # Reshape input matrix
-    A = np.concatenate(X, axis=0).T
+    Nt, Ne, Ne = X.shape
+    Xconc = np.zeros((Nt * Ne, Ne))
+    for i in range(Nt):
+        for j in range(Ne):
+            Xconc[i * Ne + j] = X[i][j]
+    A = Xconc.T
 
     # Init variables
     n_times, n_m = A.shape
     V = np.eye(n_times)
     epsilon = n_times * (n_times - 1) * eps
 
-    for it in range(n_iter_max):
+    for it in prange(n_iter_max):
         decr = 0
-        for ii in range(1, n_times):
-            for jj in range(ii):
+        for ii in prange(1, n_times):
+            for jj in prange(ii):
                 Ii = np.arange(ii, n_m, n_times)
                 Ij = np.arange(jj, n_m, n_times)
 
-                c1 = A[ii, Ii]
-                c2 = A[jj, Ij]
+                c1 = A[ii][Ii]
+                c2 = A[jj][Ij]
 
-                g12 = np.mean(A[ii, Ij] / c1)
-                g21 = np.mean(A[ii, Ij] / c2)
+                g12 = np.mean(A[ii][Ij] / c1)
+                g21 = np.mean(A[ii][Ij] / c2)
 
                 omega21 = np.mean(c1 / c2)
                 omega12 = np.mean(c2 / c1)
@@ -168,15 +181,14 @@ def ajd_pham(X, eps=1e-6, n_iter_max=15):
                 tmp = np.real(tmp + np.sqrt(tmp ** 2 - h12 * h21))
                 tau = np.array([[1, -h12 / tmp], [-h21 / tmp, 1]])
 
-                A[[ii, jj], :] = np.dot(tau, A[[ii, jj], :])
-                tmp = np.c_[A[:, Ii], A[:, Ij]]
-                tmp = np.reshape(tmp, (n_times * n_epochs, 2), order='F')
+                A[[ii][jj]] = np.dot(tau, A[[ii][jj]])
+                tmp = np.concatenate((A[:, Ii], A[:, Ij]), axis=1)
+                tmp = np.reshape(tmp.T, (2, n_times * n_epochs)).T
                 tmp = np.dot(tmp, tau.T)
-
-                tmp = np.reshape(tmp, (n_times, n_epochs * 2), order='F')
+                tmp = np.reshape(tmp.T, (n_epochs * 2, n_times)).T
                 A[:, Ii] = tmp[:, :n_epochs]
                 A[:, Ij] = tmp[:, n_epochs:]
-                V[[ii, jj], :] = np.dot(tau, V[[ii, jj], :])
+                V[[ii][jj]] = np.dot(tau, V[[ii][jj]])
         if decr < epsilon:
             break
     D = np.reshape(A, (n_times, -1, n_times)).transpose(1, 0, 2)

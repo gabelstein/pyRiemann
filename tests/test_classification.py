@@ -21,15 +21,6 @@ def test_MDM_init():
     """Test init of MDM"""
     MDM(metric='riemann')
 
-    # Should raise if metric not string or dict
-    assert_raises(TypeError, MDM, metric=42)
-
-    # Should raise if metric is not contain bad keys
-    assert_raises(KeyError, MDM, metric={'universe': 42})
-
-    # should works with correct dict
-    MDM(metric={'mean': 'riemann', 'distance': 'logeuclid'})
-
 
 def test_MDM_fit():
     """Test Fit of MDM"""
@@ -56,11 +47,6 @@ def test_MDM_predict():
 
     # predict proba
     mdm.predict_proba(covset)
-
-    # test n_jobs
-    mdm = MDM(metric='riemann', n_jobs=2)
-    mdm.fit(covset, labels)
-    mdm.predict(covset)
 
 
 def test_KNN():

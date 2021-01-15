@@ -3,7 +3,7 @@
 import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.manifold import spectral_embedding
-from pyriemann.utils.distance import pairwise_distance
+from pyriemann.utils.distance import pairwise_distance, pairwise_distance_self
 
 
 class Embedding(BaseEstimator):
@@ -45,7 +45,7 @@ class Embedding(BaseEstimator):
     def _get_affinity_matrix(self, X, eps):
 
         # make matrix with pairwise distances between points
-        distmatrix = pairwise_distance(X, metric=self.metric)
+        distmatrix = pairwise_distance_self(X, metric=self.metric)
 
         # determine which scale for the gaussian kernel
         if self.eps is None:

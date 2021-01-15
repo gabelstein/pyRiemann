@@ -54,13 +54,12 @@ class ElectrodeSelection(BaseEstimator, TransformerMixin):
     IEEE/EMBS Conference on Neural Engineering (NER), 2011, 348-351
     """
 
-    def __init__(self, nelec=16, metric='riemann', n_jobs=1):
+    def __init__(self, nelec=16, metric='riemann'):
         """Init."""
         self.nelec = nelec
         self.metric = metric
-        self.n_jobs = n_jobs
 
-    def fit(self, X, y=None, sample_weight=None):
+    def fit(self, X, y=None, sample_weight=numpy.empty(0)):
         """Find the optimal subset of electrodes.
 
         Parameters
@@ -78,7 +77,7 @@ class ElectrodeSelection(BaseEstimator, TransformerMixin):
         self : ElectrodeSelection instance
             The ElectrodeSelection instance.
         """
-        mdm = MDM(metric=self.metric, n_jobs=self.n_jobs)
+        mdm = MDM(metric=self.metric)
         mdm.fit(X, y, sample_weight=sample_weight)
         self.covmeans_ = mdm.covmeans_
 
@@ -94,8 +93,8 @@ class ElectrodeSelection(BaseEstimator, TransformerMixin):
                 di[idx] = 0
                 for i in range(len(self.covmeans_)):
                     for j in range(i + 1, len(self.covmeans_)):
-                        di[idx] += distance(self.covmeans_[i][:, sub][sub, :],
-                                            self.covmeans_[j][:, sub][sub, :],
+                        di[idx] += distance(self.covmeans_[i][:, sub][sub],
+                                            self.covmeans_[j][:, sub][sub],
                                             metric=mdm.metric_dist)
             # print di
             torm = di.argmax()
@@ -116,7 +115,7 @@ class ElectrodeSelection(BaseEstimator, TransformerMixin):
         covs : ndarray, shape (n_trials, n_elec, n_elec)
             The covariances matrices after reduction of the number of channels.
         """
-        return X[:, self.subelec_, :][:, :, self.subelec_]
+        return X[:, self.subelec_][:, :, self.subelec_]
 
 
 class FlatChannelRemover(BaseEstimator, TransformerMixin):
@@ -160,7 +159,7 @@ class FlatChannelRemover(BaseEstimator, TransformerMixin):
         X : ndarray, shape (n_trials, n_good_channels, n_times)
             The data without flat channels.
         """
-        return X[:, self.channels_, :]
+        return X[:, self.channels_]
 
     def fit_transform(self, X, y=None):
         """Find and remove flat channels.

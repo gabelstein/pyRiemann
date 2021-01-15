@@ -1,4 +1,5 @@
 import numpy
+from numba import njit
 
 from .base import sqrtm, invsqrtm, powm, logm, expm
 
@@ -6,7 +7,7 @@ from .base import sqrtm, invsqrtm, powm, logm, expm
 # geodesic
 ###############################################################
 
-
+@njit
 def geodesic(A, B, alpha, metric='riemann'):
     """Return the matrix at the position alpha on the geodesic between A and B according to the metric :
 
@@ -18,13 +19,18 @@ def geodesic(A, B, alpha, metric='riemann'):
     :returns: the covariance matrix on the geodesic
 
     """
-    options = {'riemann': geodesic_riemann,
-               'logeuclid': geodesic_logeuclid,
-               'euclid': geodesic_euclid}
-    C = options[metric](A, B, alpha)
+    if metric == 'euclid':
+        C = geodesic_euclid(A, B, alpha)
+    elif metric == 'logeuclid':
+        C = geodesic_logeuclid(A, B, alpha)
+    elif metric == 'riemann':
+        C = geodesic_riemann(A, B, alpha)
+    else:
+        raise NotImplementedError("Metric not implemented.")
+
     return C
 
-
+@njit
 def geodesic_riemann(A, B, alpha=0.5):
     """Return the matrix at the position alpha on the riemannian geodesic between A and B  :
 
@@ -46,7 +52,7 @@ def geodesic_riemann(A, B, alpha=0.5):
     E = numpy.dot(numpy.dot(sA, D), sA)
     return E
 
-
+@njit
 def geodesic_euclid(A, B, alpha=0.5):
     """Return the matrix at the position alpha on the euclidean geodesic between A and B  :
 
@@ -64,6 +70,7 @@ def geodesic_euclid(A, B, alpha=0.5):
     return (1 - alpha) * A + alpha * B
 
 
+@njit
 def geodesic_logeuclid(A, B, alpha=0.5):
     """Return the matrix at the position alpha on the log euclidean geodesic between A and B  :
 

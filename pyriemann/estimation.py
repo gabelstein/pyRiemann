@@ -167,7 +167,7 @@ class ERPCovariances(BaseEstimator, TransformerMixin):
         self.P_ = []
         for c in classes:
             # Prototyped responce for each class
-            P = numpy.mean(X[y == c, :, :], axis=0)
+            P = numpy.mean(X[y == c], axis=0)
 
             # Apply svd if requested
             if self.svd is not None:

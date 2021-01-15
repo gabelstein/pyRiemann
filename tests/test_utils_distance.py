@@ -17,7 +17,6 @@ from pyriemann.utils.distance import (distance_riemann,
 def test_check_distance_methd():
     """Test _check_distance_method"""
     _check_distance_method('riemann')
-    _check_distance_method(distance_riemann)
     assert_raises(ValueError, _check_distance_method, '666')
     assert_raises(ValueError, _check_distance_method, 42)
 
@@ -109,7 +108,7 @@ def test_distance_generic_custom():
     """Test custom distance for generic function"""
     A = 2*np.eye(3)
     B = 2*np.eye(3)
-    assert_equal(distance(A, B, metric=distance_logeuclid),
+    assert_equal(distance(A, B, metric="logeuclid"),
                  distance_logeuclid(A, B))
 
 

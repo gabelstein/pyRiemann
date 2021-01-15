@@ -4,7 +4,7 @@ import math
 import matplotlib.pyplot as plt
 
 from .utils.utils import check_version
-from .utils.distance import distance, pairwise_distance
+from .utils.distance import distance, pairwise_distance_self, pairwise_distance_single, pairwise_distance
 from .utils.mean import mean_covariance
 from .classification import MDM
 
@@ -178,10 +178,6 @@ class PermutationModel(BasePermutation):
         a scorer callable object / function with signature
         `scorer(estimator, X, y)`.
 
-    n_jobs : integer, optional
-        The number of CPUs to use to do the computation. -1 means
-        'all CPUs'.
-
     random_state : int (default 42)
         random state for the permutation test.
 
@@ -203,14 +199,12 @@ class PermutationModel(BasePermutation):
                  model=MDM(),
                  cv=3,
                  scoring=None,
-                 n_jobs=1,
                  random_state=42):
         """Init."""
         self.n_perms = n_perms
         self.model = model
         self.cv = cv
         self.scoring = scoring
-        self.n_jobs = n_jobs
         self.random_state = random_state
 
     def score(self, X, y, groups=None):
@@ -231,7 +225,6 @@ class PermutationModel(BasePermutation):
             X,
             y,
             cv=self.cv,
-            n_jobs=self.n_jobs,
             scoring=self.scoring,
             groups=groups)
         return score.mean()
@@ -279,10 +272,6 @@ class PermutationDistance(BasePermutation):
     mode : string (default: 'pairwise')
         Type of statistic to use. could be 'pairwise', 'ttest' of 'ftest'
 
-    n_jobs : integer, optional
-        The number of CPUs to use to do the computation. -1 means
-        'all CPUs'.
-
     random_state : int (default 42)
         random state for the permutation test.
 
@@ -313,7 +302,6 @@ class PermutationDistance(BasePermutation):
                  n_perms=100,
                  metric='riemann',
                  mode='pairwise',
-                 n_jobs=1,
                  random_state=42,
                  estimator=None):
         """Init."""
@@ -322,7 +310,6 @@ class PermutationDistance(BasePermutation):
             raise (ValueError("mode must be 'pairwise', 'ttest' or 'ftest'"))
         self.mode = mode
         self.metric = metric
-        self.n_jobs = n_jobs
         self.random_state = random_state
         self.estimator = estimator
 
@@ -360,11 +347,11 @@ class PermutationDistance(BasePermutation):
 
     def __init_transform(self, X):
         """Init tr"""
-        self.mdm = MDM(metric=self.metric, n_jobs=self.n_jobs)
+        self.mdm = MDM(metric=self.metric)
         if self.mode == 'ftest':
             self.global_mean = mean_covariance(X, metric=self.mdm.metric_mean)
         elif self.mode == 'pairwise':
-            X = pairwise_distance(X, metric=self.mdm.metric_dist)**2
+            X = pairwise_distance_self(X, metric=self.mdm.metric_dist)**2
         return X
 
     def _score_ftest(self, X, y):
@@ -384,7 +371,7 @@ class PermutationDistance(BasePermutation):
         # estimates within class variability
         within = 0
         for ix, classe in enumerate(mdm.classes_):
-            within += (distance(
+            within += (pairwise_distance_single(
                 X[y == classe], covmeans[ix], metric=mdm.metric_dist)
                        **2).sum()
         within /= (len(y) - n_classes)
@@ -399,13 +386,13 @@ class PermutationDistance(BasePermutation):
 
         # estimates distances between means
         n_classes = len(covmeans)
-        pairs = pairwise_distance(covmeans, metric=mdm.metric_dist)
+        pairs = pairwise_distance_self(covmeans, metric=mdm.metric_dist)
         mean_dist = numpy.triu(pairs).sum()
         mean_dist /= (n_classes * (n_classes - 1)) / 2.0
 
         dist = 0
         for ix, classe in enumerate(mdm.classes_):
-            di = (distance(
+            di = (pairwise_distance_single(
                 X[y == classe], covmeans[ix], metric=mdm.metric_dist)
                   **2).mean()
             dist += (di / numpy.sum(y == classe))

@@ -23,9 +23,9 @@ def test_ElectrodeSelection_transform():
 
 def test_FlatChannelRemover():
     X = np.random.rand(100, 10, 3)
-    X[:, 0, :] = 999
+    X[:, 0] = 999
     fcr = FlatChannelRemover()
     fcr.fit(X)
     np.testing.assert_array_equal(fcr.channels_, range(1, 10))
     Xt = fcr.fit_transform(X)
-    np.testing.assert_array_equal(Xt, X[:, 1:, :])
+    np.testing.assert_array_equal(Xt, X[:, 1:])

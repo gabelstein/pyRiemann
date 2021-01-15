@@ -5,9 +5,8 @@ from scipy.linalg import eigh
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from .utils.covariance import _check_est
-from .utils.mean import mean_covariance
+from .utils.mean import mean_covariance, _check_mean_method
 from .utils.ajd import ajd_pham
-from .utils.mean import _check_mean_method
 
 
 class Xdawn(BaseEstimator, TransformerMixin):
@@ -102,7 +101,7 @@ class Xdawn(BaseEstimator, TransformerMixin):
         self.patterns_ = []
         for c in self.classes_:
             # Prototyped responce for each class
-            P = numpy.mean(X[y == c, :, :], axis=0)
+            P = numpy.mean(X[y == c], axis=0)
 
             # Covariance matrix of the prototyper response & signal
             C = numpy.matrix(self.estimator_fn(P))

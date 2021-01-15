@@ -1,29 +1,40 @@
 """Mean covariance estimation."""
 import numpy
-from numba import jit, njit, prange
-from joblib import Parallel, delayed
+from numba import njit, prange
 
-from .base import sqrtm, invsqrtm, logm, expm
+from .base import sqrtm, invsqrtm, logm, expm, invm
 from .ajd import ajd_pham
 from .distance import distance_riemann
 from .geodesic import geodesic_riemann
-from numpy.core.numerictypes import typecodes
 
-def _get_sample_weight(sample_weight, data):
+
+@njit
+def _get_sample_weight(sample_weight, Nt):
     """Get the sample weights.
 
     If none provided, weights init to 1. otherwise, weights are normalized.
     """
-    if sample_weight is None:
-        sample_weight = numpy.ones(data.shape[0])
-    if len(sample_weight) != data.shape[0]:
+    if sample_weight.size == 0:
+        sample_weight = numpy.ones(Nt)
+    if sample_weight.shape[0] != Nt:
         raise ValueError("len of sample_weight must be equal to len of data.")
     sample_weight /= numpy.sum(sample_weight)
     return sample_weight
 
 
+@njit(parallel=True)
+def _mean(covmats):
+    Nt, Ne, Ne = covmats.shape
+    weight = 1. / Nt
+    C = numpy.zeros((Ne, Ne))
+    for index in prange(Nt):
+        C += covmats[index] * weight
+    return C
+
+
+@njit(parallel=True)
 def mean_riemann(covmats, tol=10e-9, maxiter=50, init=None,
-                 sample_weight=None):
+                 sample_weight=numpy.empty(0)):
     """Return the mean covariance matrix according to the Riemannian metric.
 
     The procedure is similar to a gradient descent minimizing the sum of
@@ -41,10 +52,10 @@ def mean_riemann(covmats, tol=10e-9, maxiter=50, init=None,
 
     """
     # init
-    sample_weight = _get_sample_weight(sample_weight, covmats)
     Nt, Ne, Ne = covmats.shape
+    sample_weight = _get_sample_weight(sample_weight, Nt)
     if init is None:
-        C = numpy.mean(covmats, axis=0)
+        C = _mean(covmats)
     else:
         C = init
     k = 0
@@ -56,13 +67,13 @@ def mean_riemann(covmats, tol=10e-9, maxiter=50, init=None,
         k = k + 1
         C12 = sqrtm(C)
         Cm12 = invsqrtm(C)
-        J = numpy.zeros((Ne, Ne))
 
-        for index in range(Nt):
-            tmp = numpy.dot(numpy.dot(Cm12, covmats[index, :, :]), Cm12)
+        J = numpy.zeros((Ne, Ne))
+        for index in prange(Nt):
+            tmp = numpy.dot(numpy.dot(Cm12, covmats[index]), Cm12)
             J += sample_weight[index] * logm(tmp)
 
-        crit = numpy.linalg.norm(J, ord='fro')
+        crit = numpy.linalg.norm(J)
         h = nu * crit
         C = numpy.dot(numpy.dot(C12, expm(nu * J)), C12)
         if h < tau:
@@ -74,65 +85,8 @@ def mean_riemann(covmats, tol=10e-9, maxiter=50, init=None,
     return C
 
 
-def mean_riemann_par(covmats, tol=10e-9, maxiter=50, init=None,
-                 sample_weight=None):
-    """Return the mean covariance matrix according to the Riemannian metric.
-
-    The procedure is similar to a gradient descent minimizing the sum of
-    riemannian distance to the mean.
-
-    .. math::
-            \mathbf{C} = \\arg\min{(\sum_i \delta_R ( \mathbf{C} , \mathbf{C}_i)^2)}  # noqa
-
-    :param covmats: Covariance matrices set, Ntrials X Nchannels X Nchannels
-    :param tol: the tolerance to stop the gradient descent
-    :param maxiter: The maximum number of iteration, default 50
-    :param init: A covariance matrix used to initialize the gradient descent. If None the Arithmetic mean is used
-    :param sample_weight: the weight of each sample
-    :returns: the mean covariance matrix
-
-    """
-    # init
-    sample_weight = _get_sample_weight(sample_weight, covmats)
-    Nt, Ne, Ne = covmats.shape
-    if init is None:
-        C = numpy.mean(covmats, axis=0)
-    else:
-        C = init
-    k = 0
-    nu = 1.0
-    tau = numpy.finfo(numpy.float64).max
-    crit = numpy.finfo(numpy.float64).max
-    # stop when J<10^-9 or max iteration = 50
-    while (crit > tol) and (k < maxiter) and (nu > tol):
-        k = k + 1
-        C12 = sqrtm(C)
-        Cm12 = invsqrtm(C)
-
-        J = make_J(covmats, Cm12, Nt, Ne, sample_weight)
-
-        crit = numpy.linalg.norm(J, ord='fro')
-        h = nu * crit
-        C = numpy.dot(numpy.dot(C12, expm(nu * J)), C12)
-        if h < tau:
-            nu = 0.95 * nu
-            tau = h
-        else:
-            nu = 0.5 * nu
-
-    return C
-
-
-@njit(parallel = True)
-def make_J(covmats, Cm12,Nt, Ne, sample_weight):
-    J = numpy.zeros((Ne, Ne))
-    for index in prange(Nt):
-        tmp = numpy.dot(numpy.dot(Cm12, covmats[index]), Cm12)
-        J += sample_weight[index] * logm(tmp)
-    return J
-
-
-def mean_logeuclid(covmats, sample_weight=None):
+@njit(parallel=True)
+def mean_logeuclid(covmats, sample_weight=numpy.empty(0)):
     """Return the mean covariance matrix according to the log-euclidean metric.
 
     .. math::
@@ -144,17 +98,19 @@ def mean_logeuclid(covmats, sample_weight=None):
     :returns: the mean covariance matrix
 
     """
-    sample_weight = _get_sample_weight(sample_weight, covmats)
     Nt, Ne, Ne = covmats.shape
+    sample_weight = _get_sample_weight(sample_weight, Nt)
+
     T = numpy.zeros((Ne, Ne))
     for index in range(Nt):
-        T += sample_weight[index] * logm(covmats[index, :, :])
+        T += sample_weight[index] * logm(covmats[index])
     C = expm(T)
 
     return C
 
 
-def mean_kullback_sym(covmats, sample_weight=None):
+@njit
+def mean_kullback_sym(covmats, sample_weight=numpy.empty(0)):
     """Return the mean covariance matrix according to KL divergence.
 
     This mean is the geometric mean between the Arithmetic and the Harmonic
@@ -176,7 +132,8 @@ def mean_kullback_sym(covmats, sample_weight=None):
     return C
 
 
-def mean_harmonic(covmats, sample_weight=None):
+@njit(parallel=True)
+def mean_harmonic(covmats, sample_weight=numpy.empty(0)):
     """Return the harmonic mean of a set of covariance matrices.
 
     .. math::
@@ -188,17 +145,18 @@ def mean_harmonic(covmats, sample_weight=None):
     :returns: the mean covariance matrix
 
     """
-    sample_weight = _get_sample_weight(sample_weight, covmats)
     Nt, Ne, Ne = covmats.shape
+    sample_weight = _get_sample_weight(sample_weight, Nt)
     T = numpy.zeros((Ne, Ne))
     for index in range(Nt):
-        T += sample_weight[index] * numpy.linalg.inv(covmats[index, :, :])
+        T += sample_weight[index] * numpy.linalg.inv(covmats[index])
     C = numpy.linalg.inv(T)
 
     return C
 
 
-def mean_logdet(covmats, tol=10e-5, maxiter=50, init=None, sample_weight=None):
+@njit(parallel=True)
+def mean_logdet(covmats, tol=10e-5, maxiter=50, init=None, sample_weight=numpy.empty(0)):
     """Return the mean covariance matrix according to the logdet metric.
 
     This is an iterative procedure where the update is:
@@ -215,10 +173,10 @@ def mean_logdet(covmats, tol=10e-5, maxiter=50, init=None, sample_weight=None):
     :returns: the mean covariance matrix
 
     """
-    sample_weight = _get_sample_weight(sample_weight, covmats)
     Nt, Ne, Ne = covmats.shape
+    sample_weight = _get_sample_weight(sample_weight, Nt)
     if init is None:
-        C = numpy.mean(covmats, axis=0)
+        C = _mean(covmats)
     else:
         C = init
     k = 0
@@ -226,21 +184,22 @@ def mean_logdet(covmats, tol=10e-5, maxiter=50, init=None, sample_weight=None):
     # stop when J<10^-9 or max iteration = 50
     while (crit > tol) and (k < maxiter):
         k = k + 1
-
         J = numpy.zeros((Ne, Ne))
 
-        for index, Ci in enumerate(covmats):
-            J += sample_weight[index] * numpy.linalg.inv(0.5 * Ci + 0.5 * C)
+        for index in prange(Nt):
+            J += sample_weight[index] * invm(0.5 * covmats[index] + 0.5 * C)
 
-        Cnew = numpy.linalg.inv(J)
-        crit = numpy.linalg.norm(Cnew - C, ord='fro')
+        Cnew = invm(J)
+        Cdiff = J - C
+        crit = numpy.linalg.norm(Cdiff)
 
         C = Cnew
     return C
 
 
+@njit(parallel=True)
 def mean_wasserstein(covmats, tol=10e-4, maxiter=50, init=None,
-                     sample_weight=None):
+                     sample_weight=numpy.empty(0)):
     """Return the mean covariance matrix according to the wasserstein metric.
 
     This is an iterative procedure where the update is [1]:
@@ -264,10 +223,10 @@ def mean_wasserstein(covmats, tol=10e-4, maxiter=50, init=None,
     Information geometry versus Optimal Transport Theory", Radar Symposium
     (IRS), 2011 Proceedings International.
     """
-    sample_weight = _get_sample_weight(sample_weight, covmats)
     Nt, Ne, Ne = covmats.shape
+    sample_weight = _get_sample_weight(sample_weight, Nt)
     if init is None:
-        C = numpy.mean(covmats, axis=0)
+        C = _mean(covmats)
     else:
         C = init
     k = 0
@@ -279,12 +238,12 @@ def mean_wasserstein(covmats, tol=10e-4, maxiter=50, init=None,
 
         J = numpy.zeros((Ne, Ne))
 
-        for index, Ci in enumerate(covmats):
-            tmp = numpy.dot(numpy.dot(K, Ci), K)
+        for index in prange(Nt):
+            tmp = numpy.dot(numpy.dot(K, covmats[index]), K)
             J += sample_weight[index] * sqrtm(tmp)
 
         Knew = sqrtm(J)
-        crit = numpy.linalg.norm(Knew - K, ord='fro')
+        crit = numpy.linalg.norm(Knew - K)
         K = Knew
     if k == maxiter:
         print('Max iter reach')
@@ -292,7 +251,8 @@ def mean_wasserstein(covmats, tol=10e-4, maxiter=50, init=None,
     return C
 
 
-def mean_euclid(covmats, sample_weight=None):
+@njit(parallel=True)
+def mean_euclid(covmats, sample_weight=numpy.empty(0)):
     """Return the mean covariance matrix according to the euclidean metric :
 
     .. math::
@@ -304,10 +264,15 @@ def mean_euclid(covmats, sample_weight=None):
     :returns: the mean covariance matrix
 
     """
-    return numpy.average(covmats, axis=0, weights=sample_weight)
+    Nt, Ne, Ne = covmats.shape
+    sample_weight = _get_sample_weight(sample_weight, Nt)
+    mean = numpy.zeros((Ne, Ne))
+    for index in range(Nt):
+        mean += covmats[index] * sample_weight[index]
+    return mean
 
-
-def mean_ale(covmats, tol=10e-7, maxiter=50, sample_weight=None):
+@njit(parallel=True)
+def mean_ale(covmats, tol=10e-7, maxiter=50, sample_weight=numpy.empty(0)):
     """Return the mean covariance matrix according using the AJD-based
     log-Euclidean Mean (ALE). See [1].
 
@@ -329,8 +294,8 @@ def mean_ale(covmats, tol=10e-7, maxiter=50, sample_weight=None):
     Matrices', PLoS ONE, 2015
 
     """
-    sample_weight = _get_sample_weight(sample_weight, covmats)
     Nt, Ne, Ne = covmats.shape
+    sample_weight = _get_sample_weight(sample_weight, Nt)
     crit = numpy.inf
     k = 0
 
@@ -340,8 +305,8 @@ def mean_ale(covmats, tol=10e-7, maxiter=50, sample_weight=None):
         k += 1
         J = numpy.zeros((Ne, Ne))
 
-        for index, Ci in enumerate(covmats):
-            tmp = logm(numpy.dot(numpy.dot(B.T, Ci), B))
+        for index in prange(Nt):
+            tmp = logm(numpy.dot(numpy.dot(B.T, covmats[index]), B))
             J += sample_weight[index] * tmp
 
         update = numpy.diag(numpy.diag(expm(J)))
@@ -352,15 +317,15 @@ def mean_ale(covmats, tol=10e-7, maxiter=50, sample_weight=None):
     A = numpy.linalg.inv(B)
 
     J = numpy.zeros((Ne, Ne))
-    for index, Ci in enumerate(covmats):
-        tmp = logm(numpy.dot(numpy.dot(B.T, Ci), B))
+    for index in prange(Nt):
+        tmp = logm(numpy.dot(numpy.dot(B.T, covmats[index]), B))
         J += sample_weight[index] * tmp
 
     C = numpy.dot(numpy.dot(A.T, expm(J)), A)
     return C
 
-
-def mean_identity(covmats, sample_weight=None):
+@njit
+def mean_identity(covmats, sample_weight=numpy.empty(0)):
     """Return the identity matrix corresponding to the covmats sit size
 
     .. math::
@@ -374,17 +339,14 @@ def mean_identity(covmats, sample_weight=None):
     return C
 
 
-def mean_covariance(covmats, metric='riemann', sample_weight=None, *args):
+def mean_covariance(covmats, metric='riemann', sample_weight=numpy.empty(0), *args):
     """Return the mean covariance matrix according to the metric
-
-
     :param covmats: Covariance matrices set, Ntrials X Nchannels X Nchannels
     :param metric: the metric (Default value 'riemann'), can be : 'riemann' , 'logeuclid' , 'euclid' , 'logdet', 'identity', 'wasserstein', 'ale',  # noqa
     'harmonic', 'kullback_sym' or a callable function
     :param sample_weight: the weight of each sample
     :param args: the argument passed to the sub function
     :returns: the mean covariance matrix
-
     """
     if callable(metric):
         C = metric(covmats, sample_weight=sample_weight, *args)

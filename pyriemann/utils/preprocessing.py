@@ -27,7 +27,7 @@ def make_Xy(data, label, intlength=200, step_size=20, adjust_class_size=True):
         data turned into sliding windows and corresponding label for each data point.
         Dimension: nSamples x nChannels x intlength
     """
-    classes,class_counts =  np.unique(label, return_counts=True)
+    classes,class_counts = np.unique(label, return_counts=True)
     min_class = np.min(class_counts)
     class_ratios = class_counts/min_class
     ratio_dict = dict(zip(classes,class_ratios))
@@ -132,7 +132,7 @@ def calc_band_filters(f_ranges, sample_rate, filter_len=2001, l_trans_bandwidth=
                                      fir_design='firwin', l_trans_bandwidth=l_trans_bandwidth,
                                      h_trans_bandwidth=h_trans_bandwidth, filter_length='1000ms')
 
-        filter_fun[a, :] = h
+        filter_fun[a] = h
 
     if joined:
         ffts = [fft(filt) for filt in filter_fun]
@@ -183,9 +183,9 @@ def apply_filter(dat_, sample_rate, filter_fun, line_noise, variance=False, segl
 
     for filt in range(filter_fun.shape[0]):
         if variance:
-            filtered.append(np.var(scipy.signal.convolve(filter_fun[filt, :],
+            filtered.append(np.var(scipy.signal.convolve(filter_fun[filt],
                                                          dat_noth_filtered, mode='same')[-seglengths[filt]:]))
         else:
-            filtered.append(scipy.signal.convolve(dat_noth_filtered, filter_fun[filt, :], mode='same'))
+            filtered.append(scipy.signal.convolve(dat_noth_filtered, filter_fun[filt], mode='same'))
 
     return np.array(filtered)

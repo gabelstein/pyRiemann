@@ -85,7 +85,7 @@ def test_CSP():
     Xt = csp.transform(X)
     assert_array_equal(Xt.shape, [len(X), X.shape[1]])
     assert_raises(TypeError, csp.transform, 'foo')
-    assert_raises(ValueError, csp.transform, X[:, 1:, :])  # unequal # of chans
+    assert_raises(ValueError, csp.transform, X[:, 1:])  # unequal # of chans
     csp.log = False
     Xt = csp.transform(X)
 
@@ -123,12 +123,12 @@ def test_BilinearFilter():
     Xt = bf.transform(X)
     assert_array_equal(Xt.shape, [len(X), filters.shape[0], filters.shape[0]])
     assert_raises(TypeError, bf.transform, 'foo')
-    assert_raises(ValueError, bf.transform, X[:, 1:, :])  # unequal # of chans
+    assert_raises(ValueError, bf.transform, X[:, 1:])  # unequal # of chans
     bf.log = True
     Xt = bf.transform(X)
     assert_array_equal(Xt.shape, [len(X), filters.shape[0]])
 
-    filters = filters[0:2, :]
+    filters = filters[0:2]
     bf = BilinearFilter(filters)
     Xt = bf.transform(X)
     assert_array_equal(Xt.shape, [len(X), filters.shape[0], filters.shape[0]])

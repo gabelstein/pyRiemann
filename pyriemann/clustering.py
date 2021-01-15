@@ -11,10 +11,10 @@ from .classification import MDM
 
 
 def _fit_single(X, y=None, n_clusters=2, init='random', random_state=None,
-                metric='riemann', max_iter=100, tol=1e-4, n_jobs=1):
+                metric='riemann', max_iter=100, tol=1e-4):
     """helper to fit a single run of centroid."""
     # init random state if provided
-    mdm = MDM(metric=metric, n_jobs=n_jobs)
+    mdm = MDM(metric=metric)
     squared_nomrs = [numpy.linalg.norm(x, ord='fro')**2 for x in X]
     mdm.covmeans_ = _init_centroids(X, n_clusters, init,
                                     random_state=random_state,
@@ -30,7 +30,7 @@ def _fit_single(X, y=None, n_clusters=2, init='random', random_state=None,
         old_labels = labels.copy()
         mdm.fit(X, old_labels)
         dist = mdm._predict_distances(X)
-        labels = mdm.classes_[dist.argmin(axis=1)]
+        labels = mdm.classes_[dist.argmin(axis=0)]
         k += 1
         if (k > max_iter) | (numpy.mean(labels == old_labels) > (1 - tol)):
             break
@@ -72,13 +72,6 @@ class Kmeans(BaseEstimator, ClassifierMixin, ClusterMixin, TransformerMixin):
         Number of time the k-means algorithm will be run with different
         centroid seeds. The final results will be the best output of
         n_init consecutive runs in terms of inertia.
-    n_jobs : int, (default: 1)
-        The number of jobs to use for the computation. This works by computing
-        each of the n_init runs in parallel.
-        If -1 all CPUs are used. If 1 is given, no parallel computing code is
-        used at all, which is useful for debugging. For n_jobs below -1,
-        (n_cpus + 1 + n_jobs) are used. Thus for n_jobs = -2, all CPUs but one
-        are used.
     tol: float, (default: 1e-4)
         the stopping criterion to stop convergence, representing the minimum
         amount of change in labels between two iterations.
@@ -103,7 +96,7 @@ class Kmeans(BaseEstimator, ClassifierMixin, ClusterMixin, TransformerMixin):
     """
 
     def __init__(self, n_clusters=2, max_iter=100, metric='riemann',
-                 random_state=None, init='random', n_init=10, n_jobs=1,
+                 random_state=None, init='random', n_init=10,
                  tol=1e-4):
         """Init."""
         self.metric = metric
@@ -113,7 +106,6 @@ class Kmeans(BaseEstimator, ClassifierMixin, ClusterMixin, TransformerMixin):
         self.init = init
         self.n_init = n_init
         self.tol = tol
-        self.n_jobs = n_jobs
 
     def fit(self, X, y=None):
         """Fit (estimates) the clusters.
@@ -138,36 +130,21 @@ class Kmeans(BaseEstimator, ClassifierMixin, ClusterMixin, TransformerMixin):
                                                random_state=self.seed,
                                                metric=self.metric,
                                                max_iter=self.max_iter,
-                                               tol=self.tol,
-                                               n_jobs=self.n_jobs)
+                                               tol=self.tol)
         else:
             numpy.random.seed(self.seed)
             seeds = numpy.random.randint(
                 numpy.iinfo(numpy.int32).max, size=self.n_init)
-            if self.n_jobs == 1:
-                res = []
-                for i in range(self.n_init):
-                    res.append(_fit_single(X, y,
-                                      n_clusters=self.n_clusters,
-                                      init=self.init,
-                                      random_state=seeds[i],
-                                      metric=self.metric,
-                                      max_iter=self.max_iter,
-                                      tol=self.tol))
-                labels, inertia, mdm = zip(*res)
-            else:
-
-                res = Parallel(n_jobs=self.n_jobs, verbose=0)(
-                    delayed(_fit_single)(X, y,
-                                         n_clusters=self.n_clusters,
-                                         init=self.init,
-                                         random_state=seed,
-                                         metric=self.metric,
-                                         max_iter=self.max_iter,
-                                         tol=self.tol,
-                                         n_jobs=1)
-                    for seed in seeds)
-                labels, inertia, mdm = zip(*res)
+            res = []
+            for i in range(self.n_init):
+                res.append(_fit_single(X, y,
+                                  n_clusters=self.n_clusters,
+                                  init=self.init,
+                                  random_state=seeds[i],
+                                  metric=self.metric,
+                                  max_iter=self.max_iter,
+                                  tol=self.tol))
+            labels, inertia, mdm = zip(*res)
 
             best = numpy.argmin(inertia)
             mdm = mdm[best]
@@ -242,7 +219,7 @@ class KmeansPerClassTransform(BaseEstimator, TransformerMixin):
 
     def transform(self, X):
         """transform."""
-        mdm = MDM(metric=self.metric, n_jobs=self.km.n_jobs)
+        mdm = MDM(metric=self.metric)
         mdm.covmeans_ = self.covmeans_
         return mdm._predict_distances(X)
 

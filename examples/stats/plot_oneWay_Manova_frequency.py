@@ -63,7 +63,7 @@ fmin = 2.0
 fmax = 40.0
 cosp = CospCovariances(
     window=128, overlap=0.98, fmin=fmin, fmax=fmax, fs=160.0)
-covmats = cosp.fit_transform(epochs_data[:, ::4, :])
+covmats = cosp.fit_transform(epochs_data[:, ::4])
 
 fr = np.fft.fftfreq(128)[0:64] * 160
 fr = fr[(fr >= fmin) & (fr <= fmax)]
