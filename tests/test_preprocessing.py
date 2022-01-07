@@ -1,6 +1,8 @@
 import numpy as np
+from scipy.signal import hilbert
 from numpy.testing import assert_array_almost_equal
 from pyriemann.spatialfilters import Whitening
+from pyriemann.preprocessing import HilbertTransform
 import pytest
 
 
@@ -97,3 +99,10 @@ def test_whitening_inverse_transform(dim_red, rndstate, get_covmats):
     assert cov_iw.shape == (n_trials, n_channels, n_channels)
     if dim_red is None:
         assert_array_almost_equal(cov, cov_iw)
+
+
+def test_hilbert_transform():
+    """Test Hilbert transform"""
+    signal = np.random.rand(100, 8)
+    hil = HilbertTransform().fit_transform(signal)
+    assert np.array_equal(hil, np.abs(hilbert(signal, axis=0)))

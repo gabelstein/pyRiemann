@@ -2,6 +2,7 @@ import numbers
 
 import numpy as np
 from scipy.linalg import eigh
+from scipy.signal import hilbert
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.extmath import stable_cumsum
@@ -192,3 +193,51 @@ class Whitening(BaseEstimator, TransformerMixin):
         """
         Xiw = self.inv_filters_.T @ X @ self.inv_filters_
         return Xiw
+
+
+class HilbertTransform(BaseEstimator, TransformerMixin):
+    """Calculates the Hilbert transform.
+
+    sklearn compatible wrapper for scipy.signal.hilbert.
+
+    Notes
+    -----
+        .. versionadded:: 0.2.8
+    """
+    def __init__(self):
+        pass
+
+    def fit(self, X, y=None):
+        """Fit.
+
+        Do nothing. For compatibility purpose.
+
+        Parameters
+        ----------
+        X : ndarray, shape (n_matrices, n_channels, n_times)
+            Multi-channel time-series
+        y : ndarray shape (n_matrices,)
+            Labels corresponding to each matrix, not used.
+
+        Returns
+        -------
+        self : Covariances instance
+            The Covariances instance.
+        """
+        return self
+
+    def transform(self, X):
+        """Estimate Hilbert transform matrices.
+
+        Parameters
+        ----------
+        X : ndarray, shape (n_times, n_channels)
+            Multi-channel time-series
+
+        Returns
+        -------
+        sig : ndarray, shape (n_channels, n_times)
+            Hilbert transformed multi-channel time-series
+        """
+        sig = hilbert(X, axis=0)
+        return np.abs(sig)
