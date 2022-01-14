@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+from numpy.linalg import LinAlgError
 
 from pyriemann.datasets.sampling import (sample_gaussian_spd,
                                          generate_random_spd_matrix)
@@ -38,7 +39,7 @@ def test_sigma_gaussian_spd():
 def test_functions_error():
     n_matrices, n_dim = 10, 16
     mean, sigma = np.eye(n_dim), 2.
-    with pytest.raises(ValueError):  # mean is not a matrix
+    with pytest.raises(LinAlgError):  # mean is not a matrix
         sample_gaussian_spd(n_matrices, np.ones(n_dim), sigma)
     with pytest.raises(ValueError):  # sigma is not a scalar
         sample_gaussian_spd(n_matrices, mean, np.ones(n_dim))

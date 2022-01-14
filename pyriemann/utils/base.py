@@ -10,10 +10,13 @@ def _matrix_operator(Ci, operator):
         raise ValueError(
             "Covariance matrices must be positive definite. Add "
             "regularization to avoid this error.")
-    eigvals, eigvects = scipy.linalg.eigh(Ci, check_finite=False)
-    eigvals = np.diag(operator(eigvals))
-    Out = np.dot(np.dot(eigvects, eigvals), eigvects.T)
-    return Out
+    eigvals, eigvects = np.linalg.eigh(Ci)
+    eigvals = operator(eigvals)
+    if eigvals.ndim == 2:
+        return np.array([eve @ np.diag(eva) @ eve.T for eva, eve in
+                         zip(eigvals, eigvects)])
+    else:
+        return eigvects @ np.diag(eigvals) @ eigvects.T
 
 
 def sqrtm(Ci):

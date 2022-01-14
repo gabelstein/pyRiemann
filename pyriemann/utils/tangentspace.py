@@ -26,10 +26,7 @@ def tangent_space(covmats, Cref):
     T = np.empty((Nt, Nf))
     coeffs = (np.sqrt(2) * np.triu(np.ones((Ne, Ne)), 1) +
               np.eye(Ne))[idx]
-    for index in range(Nt):
-        tmp = np.dot(np.dot(Cm12, covmats[index, :, :]), Cm12)
-        tmp = logm(tmp)
-        T[index, :] = np.multiply(coeffs, tmp[idx])
+    T = coeffs*logm(Cm12@covmats@Cm12)[:, idx[0], idx[1]]
     return T
 
 
@@ -50,12 +47,10 @@ def untangent_space(T, Cref):
 
     idx = np.triu_indices_from(Cref)
     covmats = np.empty((Nt, Ne, Ne))
-    covmats[:, idx[0], idx[1]] = T
-    for i in range(Nt):
-        triuc = np.triu(covmats[i], 1) / np.sqrt(2)
-        covmats[i] = (np.diag(np.diag(covmats[i])) + triuc + triuc.T)
-        covmats[i] = expm(covmats[i])
-        covmats[i] = np.dot(np.dot(C12, covmats[i]), C12)
+    covmats[:, idx[0], idx[1]] = T / np.sqrt(2)
+    covmats[:, idx[1], idx[0]] += T / np.sqrt(2)
+    covmats.flat[:: Nt*Ne + 1] /= np.sqrt(2)
+    covmats = C12@expm(covmats)@C12
 
     return covmats
 

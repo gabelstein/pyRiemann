@@ -56,11 +56,11 @@ def mean_riemann(covmats, tol=10e-9, maxiter=50, init=None,
         k = k + 1
         C12 = sqrtm(C)
         Cm12 = invsqrtm(C)
-        J = np.zeros((n_channels, n_channels))
 
-        for index in range(n_matrices):
-            tmp = np.dot(np.dot(Cm12, covmats[index]), Cm12)
-            J += sample_weight[index] * logm(tmp)
+        J = np.einsum('ijk,i->jk',
+                      logm(Cm12@covmats@Cm12),
+                      sample_weight,
+                      optimize=True)
 
         crit = np.linalg.norm(J, ord='fro')
         h = nu * crit
@@ -89,9 +89,10 @@ def mean_logeuclid(covmats, sample_weight=None):
     """
     sample_weight = _get_sample_weight(sample_weight, covmats)
     n_matrices, n_channels, _ = covmats.shape
-    T = np.zeros((n_channels, n_channels))
-    for index in range(n_matrices):
-        T += sample_weight[index] * logm(covmats[index])
+    T = np.einsum('ijk,i->jk',
+                  logm(covmats),
+                  sample_weight,
+                  optimize=True)
     C = expm(T)
 
     return C
@@ -136,9 +137,10 @@ def mean_harmonic(covmats, sample_weight=None):
     """
     sample_weight = _get_sample_weight(sample_weight, covmats)
     n_matrices, n_channels, _ = covmats.shape
-    T = np.zeros((n_channels, n_channels))
-    for index in range(n_matrices):
-        T += sample_weight[index] * np.linalg.inv(covmats[index])
+    T = np.einsum('ijk,i->jk',
+                  np.linalg.inv(covmats),
+                  sample_weight,
+                  optimize=True)
     C = np.linalg.inv(T)
 
     return C
@@ -173,10 +175,10 @@ def mean_logdet(covmats, tol=10e-5, maxiter=50, init=None, sample_weight=None):
     while (crit > tol) and (k < maxiter):
         k = k + 1
 
-        J = np.zeros((n_channels, n_channels))
-
-        for index, Ci in enumerate(covmats):
-            J += sample_weight[index] * np.linalg.inv(0.5 * Ci + 0.5 * C)
+        J = np.einsum('ijk,i->jk',
+                      np.linalg.inv(0.5 * covmats + 0.5 * C),
+                      sample_weight,
+                      optimize=True)
 
         Cnew = np.linalg.inv(J)
         crit = np.linalg.norm(Cnew - C, ord='fro')
@@ -223,11 +225,10 @@ def mean_wasserstein(covmats, tol=10e-4, maxiter=50, init=None,
     while (crit > tol) and (k < maxiter):
         k = k + 1
 
-        J = np.zeros((n_channels, n_channels))
-
-        for index, Ci in enumerate(covmats):
-            tmp = np.dot(np.dot(K, Ci), K)
-            J += sample_weight[index] * sqrtm(tmp)
+        J = np.einsum('ijk,i->jk',
+                      sqrtm(K@covmats@K),
+                      sample_weight,
+                      optimize=True)
 
         Knew = sqrtm(J)
         crit = np.linalg.norm(Knew - K, ord='fro')
@@ -284,11 +285,11 @@ def mean_ale(covmats, tol=10e-7, maxiter=50, sample_weight=None):
     B, _ = ajd_pham(covmats)
     while (crit > tol) and (k < maxiter):
         k += 1
-        J = np.zeros((n_channels, n_channels))
 
-        for index, Ci in enumerate(covmats):
-            tmp = logm(np.dot(np.dot(B.T, Ci), B))
-            J += sample_weight[index] * tmp
+        J = np.einsum('ijk,i->jk',
+                      logm(B.T@covmats@B),
+                      sample_weight,
+                      optimize=True)
 
         update = np.diag(np.diag(expm(J)))
         B = np.dot(B, invsqrtm(update))
@@ -296,11 +297,10 @@ def mean_ale(covmats, tol=10e-7, maxiter=50, sample_weight=None):
         crit = distance_riemann(np.eye(n_channels), update)
 
     A = np.linalg.inv(B)
-
-    J = np.zeros((n_channels, n_channels))
-    for index, Ci in enumerate(covmats):
-        tmp = logm(np.dot(np.dot(B.T, Ci), B))
-        J += sample_weight[index] * tmp
+    J = np.einsum('ijk,i->jk',
+                  logm(B.T@covmats@B),
+                  sample_weight,
+                  optimize=True)
 
     C = np.dot(np.dot(A.T, expm(J)), A)
     return C
