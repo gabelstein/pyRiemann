@@ -64,7 +64,7 @@ def mean_riemann(covmats, tol=10e-9, maxiter=50, init=None,
 
         crit = np.linalg.norm(J, ord='fro')
         h = nu * crit
-        C = np.dot(np.dot(C12, expm(nu * J)), C12)
+        C = C12@expm(nu * J)@C12
         if h < tau:
             nu = 0.95 * nu
             tau = h
@@ -302,7 +302,7 @@ def mean_ale(covmats, tol=10e-7, maxiter=50, sample_weight=None):
                   sample_weight,
                   optimize=True)
 
-    C = np.dot(np.dot(A.T, expm(J)), A)
+    C = A.T@expm(J)@A
     return C
 
 
