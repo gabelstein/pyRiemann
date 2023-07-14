@@ -1,4 +1,5 @@
-import numpy as np
+import torch as np
+import numpy as nmp
 import pytest
 
 from pyriemann.utils.test import (

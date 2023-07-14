@@ -1,7 +1,8 @@
 
 import pytest
 from pytest import approx
-import numpy as np
+import torch as np
+import numpy as nmp
 from numpy.testing import assert_array_equal
 from sklearn.model_selection import KFold, StratifiedShuffleSplit
 from sklearn.pipeline import make_pipeline, Pipeline

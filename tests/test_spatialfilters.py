@@ -1,6 +1,7 @@
 from conftest import get_metrics
 import pytest
-import numpy as np
+import torch as np
+import numpy as nmp
 from numpy.testing import assert_array_equal
 
 from pyriemann.spatialfilters import Xdawn, CSP, SPoC, BilinearFilter, AJDC

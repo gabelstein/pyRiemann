@@ -11,7 +11,8 @@ with different centerings and dispersions.
 #
 # License: BSD (3-clause)
 
-import numpy as np
+import torch as np
+import numpy as nmp
 import matplotlib.pyplot as plt
 
 from pyriemann.embedding import SpectralEmbedding

@@ -1,5 +1,6 @@
 from conftest import get_metrics
-import numpy as np
+import torch as np
+import numpy as nmp
 from sklearn.neighbors import NearestCentroid
 
 from pyriemann.datasets import make_gaussian_blobs

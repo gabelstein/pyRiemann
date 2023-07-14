@@ -1,5 +1,6 @@
 from conftest import requires_matplotlib
-import numpy as np
+import torch as np
+import numpy as nmp
 from pyriemann.stats import PermutationDistance, PermutationModel
 from pyriemann.spatialfilters import CSP
 import pytest

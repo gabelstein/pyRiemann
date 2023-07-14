@@ -22,7 +22,8 @@ set.
 from functools import partial
 from time import time
 
-import numpy as np
+import torch as np
+import numpy as nmp
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from sklearn.model_selection import train_test_split
@@ -44,7 +45,7 @@ def get_proba(cov_00, cov_01, cov_11, clf):
     cov = np.array([[cov_00, cov_01], [cov_01, cov_11]])
     with np.testing.suppress_warnings() as sup:
         sup.filter(RuntimeWarning)
-        return clf.predict_proba(cov[np.newaxis, ...])[0, 1]
+        return clf.predict_proba(cov[None, ...])[0, 1]
 
 
 def plot_classifiers(metric):
@@ -195,7 +196,7 @@ classifiers = [
 ]
 n_classifs = len(classifiers)
 
-rs = np.random.RandomState(2022)
+rs = nmp.random.RandomState(2022)
 n_matrices, n_channels = 50, 2
 y = np.concatenate([np.zeros(n_matrices), np.ones(n_matrices)])
 

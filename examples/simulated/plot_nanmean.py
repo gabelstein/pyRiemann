@@ -9,7 +9,8 @@ Estimate the mean of SPD matrices corrupted by NaN values [1]_.
 #
 # License: BSD (3-clause)
 
-import numpy as np
+import torch as np
+import numpy as nmp
 from matplotlib import pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -41,7 +42,7 @@ def corrupt(covmats, n_corrup_channels_max, rs):
 # Generate data
 # -------------
 
-rs = np.random.RandomState(42)
+rs = nmp.random.RandomState(42)
 n_matrices, n_channels = 100, 10
 covmats = make_covariances(
     n_matrices, n_channels, rs, evals_mean=100., evals_std=20.)

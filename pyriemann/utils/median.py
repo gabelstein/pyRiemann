@@ -1,7 +1,8 @@
 """Medians of SPD/HPD matrices."""
 
 import warnings
-import numpy as np
+import torch as np
+import numpy as nmp
 
 from .base import sqrtm, invsqrtm, logm, expm
 from .distance import distance

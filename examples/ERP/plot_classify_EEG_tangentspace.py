@@ -12,7 +12,8 @@ the tangent space and classified with a logistic regression.
 #
 # License: BSD (3-clause)
 
-import numpy as np
+import torch as np
+import numpy as nmp
 
 from pyriemann.estimation import XdawnCovariances
 from pyriemann.tangentspace import TangentSpace

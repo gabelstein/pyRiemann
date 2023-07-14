@@ -6,7 +6,8 @@ Motor imagery classification
 Classify motor imagery data with Riemannian geometry [1]_.
 """
 # generic import
-import numpy as np
+import torch as np
+import numpy as nmp
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt

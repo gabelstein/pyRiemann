@@ -1,6 +1,7 @@
 """Kernels for SPD matrices."""
 
-import numpy as np
+import torch as np
+import numpy as nmp
 
 from .base import invsqrtm, logm
 from .mean import mean_riemann
@@ -177,18 +178,21 @@ def _apply_matrix_kernel(kernel_fct, X, Y=None, *, Cref=None, reg=1e-10):
 
     X_ = kernel_fct(X, Cref)
 
-    if isinstance(Y, type(None)) or np.array_equal(X, Y):
+    if isinstance(Y, type(None)) or np.allclose(X, Y):
         Y_ = X_
     else:
         Y_ = kernel_fct(Y, Cref)
 
     # calculate scalar products: K[i,j] = np.trace(X_[i]^T @ Y_[j])
-    X_T = X_.transpose((0, 2, 1))
-    K = np.einsum('acb,dbc->ad', X_T, Y_, optimize=True)
+    X_T = X_.transpose(1, 2)
+    X_Tnp = nmp.asarray(X_).transpose((0, 2, 1))
+    K = np.einsum('acb,dbc->ad', X_T, Y_)
 
     # regularization due to numerical errors
-    if np.array_equal(X_, Y_):
-        K.flat[:: n_matrices_X + 1] += reg
+    if X_.shape == Y_.shape and np.allclose(X_, Y_):
+        Kflat = K.flatten()
+        Kflat[:: n_matrices_X + 1] += reg
+        K = Kflat.reshape((n_matrices_X, n_matrices_X))
 
     return K
 

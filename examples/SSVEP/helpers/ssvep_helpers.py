@@ -1,7 +1,8 @@
 """ Local functions for SSVEP examples """
 
 import os
-import numpy as np
+import torch as np
+import numpy as nmp
 
 from mne import create_info
 from mne.datasets import fetch_dataset

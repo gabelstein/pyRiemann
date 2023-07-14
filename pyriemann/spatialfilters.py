@@ -1,7 +1,8 @@
 """Spatial filtering function."""
 import warnings
 
-import numpy as np
+import torch as np
+import numpy as nmp
 from scipy.linalg import eigh, inv
 from sklearn.base import BaseEstimator, TransformerMixin
 
@@ -202,7 +203,7 @@ class BilinearFilter(BaseEstimator, TransformerMixin):
         self : BilinearFilter instance
             The BilinearFilter instance.
         """
-        if not isinstance(self.filters, np.ndarray):
+        if not isinstance(self.filters, type(np.tensor([]))):
             raise TypeError('filters must be an array.')
         if not isinstance(self.log, bool):
             raise TypeError('log must be a boolean')
@@ -224,7 +225,7 @@ class BilinearFilter(BaseEstimator, TransformerMixin):
             Set of spatialy filtered log-variance or covariance, depending on
             the 'log' input parameter.
         """
-        if not isinstance(X, (np.ndarray, list)):
+        if not isinstance(X, (type(np.tensor([])), list)):
             raise TypeError('X must be an array.')
         if X[0].shape[1] != self.filters_.shape[1]:
             raise ValueError("Data and filters dimension must be compatible.")
@@ -321,9 +322,9 @@ class CSP(BilinearFilter):
         if not isinstance(self.log, bool):
             raise TypeError('log must be a boolean')
 
-        if not isinstance(X, (np.ndarray, list)):
+        if not isinstance(X, (type(np.tensor([])), list)):
             raise TypeError('X must be an array.')
-        if not isinstance(y, (np.ndarray, list)):
+        if not isinstance(y, (type(np.tensor([])), list)):
             raise TypeError('y must be an array.')
         X, y = np.asarray(X), np.asarray(y)
         if X.ndim != 3:

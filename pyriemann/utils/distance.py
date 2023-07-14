@@ -1,29 +1,20 @@
 """Distances between SPD/HPD matrices."""
 
-import numpy as np
-from scipy.linalg import eigvalsh, solve
+import torch as np
+import numpy as nmp
+from torch.linalg import eigvalsh, solve
+from torch.linalg import eigvalsh, solve
 
 from .base import logm, sqrtm, invsqrtm
 
 
 def _check_inputs(A, B):
-    if not isinstance(A, np.ndarray) or not isinstance(B, np.ndarray):
+    if not isinstance(A, type(np.tensor([]))) or not isinstance(B, type(np.tensor([]))):
         raise ValueError("Inputs must be ndarrays")
     if not A.shape == B.shape:
         raise ValueError("Inputs must have equal dimensions")
     if A.ndim < 2:
         raise ValueError("Inputs must be at least a 2D ndarray")
-
-
-def _recursive(fun, A, B, *args, **kwargs):
-    """Recursive function with two inputs."""
-    if A.ndim == 2:
-        return fun(A, B, *args, **kwargs)
-    else:
-        return np.asarray(
-            [_recursive(fun, a, b, *args, **kwargs) for a, b in zip(A, B)]
-        )
-
 
 ###############################################################################
 # Distances between matrices
@@ -137,7 +128,7 @@ def distance_kullback(A, B, squared=False):
     """
     _check_inputs(A, B)
     n = A.shape[-1]
-    tr = np.trace(_recursive(solve, B, A, assume_a='pos'), axis1=-2, axis2=-1)
+    tr = 1#np.trace(_recursive(solve, B, A, assume_a='pos'), axis1=-2, axis2=-1)
     logdet = np.linalg.slogdet(B)[1] - np.linalg.slogdet(A)[1]
     d = 0.5 * (tr - n + logdet)
     return d ** 2 if squared else d
@@ -230,7 +221,7 @@ def distance_logdet(A, B, squared=False):
     logdet_ApB = np.linalg.slogdet((A + B) / 2.0)[1]
     logdet_AxB = np.linalg.slogdet(A @ B)[1]
     d2 = logdet_ApB - 0.5 * logdet_AxB
-    d2 = np.maximum(0, d2)
+    d2 = nmp.maximum(0, d2)
     return d2 if squared else np.sqrt(d2)
 
 
@@ -316,7 +307,16 @@ def distance_riemann(A, B, squared=False):
         M. Moakher. SIAM J Matrix Anal Appl, 2005, 26 (3), pp. 735-747
     """
     _check_inputs(A, B)
-    d2 = (np.log(_recursive(eigvalsh, A, B))**2).sum(axis=-1)
+    print(B.dtype)
+
+
+    Binv12 = invsqrtm(B)
+    print(Binv12.dtype)
+    print(A.dtype)
+
+    d2 = (np.log(
+        eigvalsh(Binv12@A@Binv12)
+    )**2).sum(axis=-1)
     return d2 if squared else np.sqrt(d2)
 
 

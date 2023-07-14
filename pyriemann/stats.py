@@ -1,6 +1,7 @@
 import sys
 import math
-import numpy as np
+import torch as np
+import numpy as nmp
 
 from .utils.utils import check_version
 from .utils.distance import distance, pairwise_distance
@@ -75,7 +76,7 @@ class BasePermutation():
                         self._print_progress(ii)
 
         else:
-            rs = np.random.RandomState(self.random_state)
+            rs = nmp.random.RandomState(self.random_state)
             for ii in range(self.n_perms - 1):
                 perm = self._shuffle(y, groups, rs)
                 self.scores_[ii + 1] = self.score(X, perm, groups=groups)

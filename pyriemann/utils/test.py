@@ -1,4 +1,5 @@
-import numpy as np
+import torch as np
+import numpy as nmp
 
 
 def _get_eigenvals(X):

@@ -1,6 +1,7 @@
 from functools import partial
 import warnings
-import numpy as np
+import torch as np
+import numpy as nmp
 from scipy.stats import multivariate_normal
 from sklearn.utils import check_random_state
 from joblib import Parallel, delayed
@@ -348,7 +349,7 @@ def _sample_parameter_r(n_samples, n_dim, sigma,
         raise ValueError(
             f'n_dim={n_dim} is not yet supported with rejection sampling')
     rs = check_random_state(random_state)
-    x0 = rs.randn(n_dim)
+    x0 = np.randn(n_dim)
     ptarget = partial(_pdf_r, sigma=sigma)
     r_samples = _slice_sampling(
         ptarget,
@@ -387,7 +388,7 @@ def _sample_parameter_U(n_samples, n_dim, random_state=None):
     rs = check_random_state(random_state)
     u_samples = np.zeros((n_samples, n_dim, n_dim))
     for i in range(n_samples):
-        A = rs.randn(n_dim, n_dim)
+        A = np.randn(n_dim, n_dim)
         Q, _ = np.linalg.qr(A)
         u_samples[i] = Q
 
@@ -516,7 +517,7 @@ def sample_gaussian_spd(n_matrices, mean, sigma, random_state=None,
     samples_centered = _sample_gaussian_spd_centered(
         n_matrices=n_matrices,
         n_dim=n_dim,
-        sigma=sigma / np.sqrt(n_dim),
+        sigma=sigma / nmp.sqrt(n_dim),
         random_state=random_state,
         n_jobs=n_jobs,
         sampling_method=sampling_method
@@ -565,7 +566,7 @@ def generate_random_spd_matrix(n_dim, random_state=None, *, mat_mean=.0,
             f'n_samples must be a positive integer (Got {n_dim})')
 
     rs = check_random_state(random_state)
-    A = mat_mean + mat_std * rs.randn(n_dim, n_dim)
+    A = mat_mean + mat_std * np.randn(n_dim, n_dim)
     A = 0.5 * (A + A.T)
     C = expm(A)
 

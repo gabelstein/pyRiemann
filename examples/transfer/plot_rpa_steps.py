@@ -8,7 +8,8 @@ points from source and target domains when applying the Riemannian Procrustes
 Analysis [1]_ to match their statistics.
 """
 
-import numpy as np
+import torch as np
+import numpy as nmp
 import matplotlib.pyplot as plt
 
 from pyriemann.embedding import SpectralEmbedding

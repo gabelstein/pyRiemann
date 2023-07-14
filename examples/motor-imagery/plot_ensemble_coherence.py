@@ -19,7 +19,8 @@ from mne.io import concatenate_raws
 from mne.io.edf import read_raw_edf
 from mne.datasets import eegbci
 
-import numpy as np
+import torch as np
+import numpy as nmp
 import pandas as pd
 import seaborn as sns
 

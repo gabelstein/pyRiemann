@@ -1,6 +1,7 @@
 import numbers
 
-import numpy as np
+import torch as np
+import numpy as nmp
 from scipy.linalg import eigh
 
 from sklearn.base import BaseEstimator, TransformerMixin

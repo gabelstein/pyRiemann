@@ -1,7 +1,8 @@
 """Module for regression functions."""
 import functools
 
-import numpy as np
+import torch as np
+import numpy as nmp
 
 from sklearn.metrics import r2_score
 from sklearn.svm import SVR as sklearnSVR
@@ -133,10 +134,10 @@ class SVR(sklearnSVR):
             self.Cref_ = mean_covariance(X, metric=self.metric)
         elif callable(self.Cref):
             self.Cref_ = self.Cref(X)
-        elif isinstance(self.Cref, np.ndarray):
+        elif isinstance(self.Cref, type(np.tensor([]))):
             self.Cref_ = self.Cref
         else:
-            raise TypeError(f'Cref has to be np.ndarray, callable or None. But'
+            raise TypeError(f'Cref has to be type(np.tensor([])), callable or None. But'
                             f' has type {type(self.Cref)}.')
 
     def _set_kernel(self):
@@ -232,11 +233,11 @@ class KNearestNeighborRegressor(MDM):
         """
         dist = self._predict_distances(X)
         idx = np.argsort(dist)
-        dist_sorted = np.take_along_axis(dist, idx, axis=1)
+        dist_sorted = np.take_along_dim(dist, idx, dim=1)
         neighbors_values = self.values_[idx]
         softmax_dist = softmax(-dist_sorted[:, 0:self.n_neighbors]**2)
         knn_values = neighbors_values[:, 0:self.n_neighbors]
-        out = np.sum(knn_values*softmax_dist, axis=1)
+        out = np.sum(knn_values*softmax_dist, dim=1)
         return out
 
     def score(self, X, y):

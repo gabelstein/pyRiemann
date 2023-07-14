@@ -1,6 +1,7 @@
 """Tangent space for SPD/HPD matrices."""
 
-import numpy as np
+import torch as np
+import numpy as nmp
 
 from .base import sqrtm, invsqrtm, logm, expm
 from .mean import mean_covariance
@@ -251,8 +252,8 @@ def upper(X):
     n = X.shape[-1]
     if X.shape[-2] != n:
         raise ValueError("Matrices must be square")
-    idx = np.triu_indices_from(np.empty((n, n)))
-    coeffs = (np.sqrt(2) * np.triu(np.ones((n, n)), 1) + np.eye(n))[idx]
+    idx = nmp.triu_indices_from(nmp.empty((n, n)))
+    coeffs = (nmp.sqrt(2) * np.triu(np.ones((n, n)), 1) + np.eye(n))[idx]
     T = coeffs * X[..., idx[0], idx[1]]
     return T
 
@@ -282,12 +283,12 @@ def unupper(T):
     .. versionadded:: 0.4
     """
     dims = T.shape
-    n = int((np.sqrt(1 + 8 * dims[-1]) - 1) / 2)
+    n = int((nmp.sqrt(1 + 8 * dims[-1]) - 1) / 2)
     X = np.empty((*dims[:-1], n, n), dtype=T.dtype)
-    idx = np.triu_indices_from(np.empty((n, n)))
+    idx = nmp.triu_indices_from(nmp.empty((n, n)))
     X[..., idx[0], idx[1]] = T
-    idx = np.triu_indices_from(np.empty((n, n)), k=1)
-    X[..., idx[0], idx[1]] /= np.sqrt(2)
+    idx = nmp.triu_indices_from(nmp.empty((n, n)), k=1)
+    X[..., idx[0], idx[1]] /= nmp.sqrt(2)
     X[..., idx[1], idx[0]] = X[..., idx[0], idx[1]].conj()
     return X
 

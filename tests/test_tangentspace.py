@@ -1,5 +1,6 @@
 from conftest import get_metrics
-import numpy as np
+import torch as np
+import numpy as nmp
 from pyriemann.tangentspace import TangentSpace, FGDA
 import pytest
 from pytest import approx

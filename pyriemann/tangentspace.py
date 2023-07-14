@@ -1,5 +1,6 @@
 """Tangent space functions."""
-import numpy as np
+import torch as np
+import numpy as nmp
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from .utils.utils import check_version
@@ -133,7 +134,7 @@ class TangentSpace(BaseEstimator, TransformerMixin):
         """Check data shape and return the size of SPD matrix."""
         shape_X = X.shape
         if len(X.shape) == 2:
-            n_channels = (np.sqrt(1 + 8 * shape_X[1]) - 1) / 2
+            n_channels = (nmp.sqrt(1 + 8 * shape_X[1]) - 1) / 2
             if n_channels != int(n_channels):
                 raise ValueError("Shape of Tangent space vector does not"
                                  " correspond to a square matrix.")
@@ -283,7 +284,7 @@ class FGDA(BaseEstimator, TransformerMixin):
         ts = self._ts.fit_transform(X, sample_weight=sample_weight)
         self._lda.fit(ts, y)
 
-        W = self._lda.coef_.copy()
+        W = np.asarray(self._lda.coef_.copy())
         self._W = W.T @ np.linalg.pinv(W @ W.T) @ W
         return ts
 

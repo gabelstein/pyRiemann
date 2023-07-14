@@ -1,7 +1,8 @@
 """Means of SPD/HPD matrices."""
 
 from copy import deepcopy
-import numpy as np
+import torch as np
+import numpy as nmp
 import warnings
 
 from .ajd import ajd_pham
@@ -63,7 +64,7 @@ def mean_ale(covmats, tol=10e-7, maxiter=50, sample_weight=None):
             logm(B @ covmats @ B.conj().T)
         )
         delta = np.real(np.diag(expm(J)))
-        B = (np.abs(delta) ** -.5)[:, np.newaxis] * B
+        B = (np.abs(delta) ** -.5)[:, None] * B
 
         crit = distance_riemann(eye_n, np.diag(delta))
         if crit <= tol:
@@ -170,7 +171,10 @@ def mean_euclid(covmats, sample_weight=None):
     --------
     mean_covariance
     """
-    return np.average(covmats, axis=0, weights=sample_weight)
+    if isinstance(sample_weight, type(None)):
+        sample_weight = np.ones(covmats.shape[0])
+
+    return np.mean((covmats.T*sample_weight).T, dim=0)
 
 
 def mean_harmonic(covmats, sample_weight=None):
@@ -506,6 +510,7 @@ def mean_riemann(covmats, tol=10e-9, maxiter=50, init=None,
     crit = np.finfo(np.float64).max
     for _ in range(maxiter):
         C12, Cm12 = sqrtm(C), invsqrtm(C)
+
         J = np.einsum('a,abc->bc', sample_weight, logm(Cm12 @ covmats @ Cm12))
         C = C12 @ expm(nu * J) @ C12
 

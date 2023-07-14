@@ -1,6 +1,7 @@
 import warnings
 
-import numpy as np
+import torch as np
+import numpy as nmp
 from scipy.linalg import block_diag
 from scipy.stats import chi2
 from sklearn.covariance import oas, ledoit_wolf, fast_mcd, empirical_covariance
@@ -703,7 +704,7 @@ def normalize(X, norm):
 
     if norm == "corr":
         stddev = np.sqrt(np.abs(np.diagonal(X, axis1=-2, axis2=-1)))
-        denom = np.expand_dims(stddev, axis=-2) * stddev[..., np.newaxis]
+        denom = np.unsqueeze(stddev, axis=-2) * stddev[..., None]
     elif norm == "trace":
         denom = np.trace(X, axis1=-2, axis2=-1)
     elif norm == "determinant":
@@ -711,7 +712,7 @@ def normalize(X, norm):
     else:
         raise ValueError(f"{norm} is not a supported normalization")
 
-    denom = np.expand_dims(denom, axis=tuple(range(denom.ndim, X.ndim)))
+    denom = np.unsqueeze(denom, axis=tuple(range(denom.ndim, X.ndim)))
     Xn = X / denom
 
     if norm == "corr":

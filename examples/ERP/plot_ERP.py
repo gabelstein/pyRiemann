@@ -10,7 +10,8 @@ Different ways to display a multichannel event-related potential (ERP).
 #
 # License: BSD (3-clause)
 
-import numpy as np
+import torch as np
+import numpy as nmp
 import mne
 from matplotlib import pyplot as plt
 from pyriemann.utils.viz import plot_waveforms

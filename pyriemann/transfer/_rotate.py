@@ -1,5 +1,6 @@
 import warnings
-import numpy as np
+import torch as np
+import numpy as nmp
 from ..utils.distance import distance
 from ..utils.utils import check_weights
 
@@ -40,7 +41,7 @@ def _grad(Q, X, Y, weights, metric='euclid'):
     elif metric == 'riemann':
         M = np.linalg.inv(X) @ Q @ Y @ Q.T
         eigvals, eigvecs = np.linalg.eig(M)
-        logeigvals = np.expand_dims(np.log(eigvals), -2)
+        logeigvals = np.unsqueeze(np.log(eigvals), -2)
         logM = (eigvecs * logeigvals) @ np.linalg.inv(eigvecs)
         return np.einsum('a,abc->bc', weights, 4 * logM @ Q)
 

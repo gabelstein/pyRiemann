@@ -1,4 +1,5 @@
-import numpy as np
+import torch as np
+import numpy as nmp
 from scipy.stats import gmean
 import pytest
 from pytest import approx
@@ -304,7 +305,7 @@ def test_mean_nan_riemann_errors(get_covmats):
 
 
 def callable_np_average(X, sample_weight=None):
-    return np.average(X, axis=0, weights=sample_weight)
+    return np.mean(X, axis=0, weights=sample_weight)
 
 
 @pytest.mark.parametrize(

@@ -1,5 +1,6 @@
 from numpy.testing import assert_array_equal
-import numpy as np
+import torch as np
+import numpy as nmp
 import pytest
 from pytest import approx
 

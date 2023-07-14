@@ -1,5 +1,6 @@
 import pytest
-import numpy as np
+import torch as np
+import numpy as nmp
 
 from pyriemann.datasets.sampling import (sample_gaussian_spd,
                                          generate_random_spd_matrix)

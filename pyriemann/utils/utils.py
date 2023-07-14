@@ -1,5 +1,6 @@
 from distutils.version import LooseVersion
-import numpy as np
+import torch as np
+import numpy as nmp
 
 
 def check_version(library, min_version):
@@ -67,4 +68,6 @@ def check_weights(weights, n_weights, *, check_positivity=False):
             raise ValueError("Weights must be strictly positive.")
 
     weights /= np.sum(weights)
-    return weights
+    weights = np.asarray(weights, dtype=np.float64)
+    print(type(weights))
+    return np.asarray(weights, dtype=np.float64)

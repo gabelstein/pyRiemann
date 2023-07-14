@@ -15,7 +15,8 @@ from functools import partial
 
 import os
 
-import numpy as np
+import torch as np
+import numpy as nmp
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 
@@ -36,7 +37,7 @@ def get_zscores(cov_00, cov_01, cov_11, potato):
     cov = np.array([[cov_00, cov_01], [cov_01, cov_11]])
     with np.testing.suppress_warnings() as sup:
         sup.filter(RuntimeWarning)
-        return potato.transform(cov[np.newaxis, ...])
+        return potato.transform(cov[None, ...])
 
 
 def plot_potato_2D(ax, cax, X, Y, p_zscores, p_center, covs, p_colors, clabel):
@@ -209,13 +210,13 @@ def online_detect(t):
     global time, sig, covs_visu
 
     # Online artifact detection
-    rp_label = rpotato.predict(covs[np.newaxis, t])[0]
-    ep_label = epotato.predict(covs[np.newaxis, t])[0]
+    rp_label = rpotato.predict(covs[None, t])[0]
+    ep_label = epotato.predict(covs[None, t])[0]
     if not is_static:
         if rp_label == 1:
-            rpotato.partial_fit(covs[np.newaxis, t], alpha=1 / t)
+            rpotato.partial_fit(covs[None, t], alpha=1 / t)
         if ep_label == 1:
-            epotato.partial_fit(covs[np.newaxis, t], alpha=1 / t)
+            epotato.partial_fit(covs[None, t], alpha=1 / t)
 
     # Update data
     time_start = t * interval + test_time_end
@@ -225,7 +226,7 @@ def online_detect(t):
     time = np.r_[time[int(interval * sfreq):], time_]
     sig = np.hstack((sig[:, int(interval*sfreq):],
                      eeg_data[:, int(time_start*sfreq):int(time_end*sfreq)]))
-    covs_visu = np.vstack((covs_visu, covs[np.newaxis, t]))
+    covs_visu = np.vstack((covs_visu, covs[None, t]))
     rp_colors.append('b' if rp_label == 1 else 'r')
     ep_colors.append('b' if ep_label == 1 else 'r')
     if len(covs_visu) > test_covs_visu:

@@ -14,7 +14,8 @@ data to the baseline with no frequency band selection [1]_.
 # License: BSD (3-clause)
 
 
-import numpy as np
+import torch as np
+import numpy as nmp
 from time import time
 from matplotlib import pyplot as plt
 

@@ -1,4 +1,5 @@
-import numpy as np
+import torch as np
+import numpy as nmp
 from joblib import Parallel, delayed
 from sklearn.base import (
     BaseEstimator,

@@ -1,7 +1,8 @@
 """Module for classification function."""
 import functools
 
-import numpy as np
+import torch as np
+import numpy as nmp
 from scipy import stats
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 from sklearn.svm import SVC as sklearnSVC
@@ -544,9 +545,9 @@ class KNearestNeighbor(MDM):
 
         dist = self._predict_distances(X)
         idx = np.argsort(dist)
-        dist_sorted = np.take_along_axis(dist, idx, axis=1)
+        dist_sorted = np.take_along_dim(dist, idx, dim=1)
         neighbors_classes = self.classmeans_[idx]
-        probas = softmax(-dist_sorted[:, 0:self.n_neighbors] ** 2)
+        probas = np.asarray(softmax(-dist_sorted[:, 0:self.n_neighbors] ** 2))
 
         prob = np.zeros((n_matrices, len(self.classes_)))
         for m in range(n_matrices):
@@ -704,10 +705,10 @@ class SVC(sklearnSVC):
             self.Cref_ = mean_covariance(X, metric=self.metric)
         elif callable(self.Cref):
             self.Cref_ = self.Cref(X)
-        elif isinstance(self.Cref, np.ndarray):
+        elif isinstance(self.Cref, type(np.tensor([]))):
             self.Cref_ = self.Cref
         else:
-            raise TypeError(f'Cref must be np.ndarray, callable or None, is'
+            raise TypeError(f'Cref must be type(np.tensor([])), callable or None, is'
                             f' {self.Cref}.')
 
     def _set_kernel(self):
@@ -795,11 +796,10 @@ class MeanField(BaseEstimator, ClassifierMixin, TransformerMixin):
         self : MeanField instance
             The MeanField instance.
         """
-        self.classes_ = np.unique(y)
+        self.classes_ = nmp.unique(y)
 
         if sample_weight is None:
             sample_weight = np.ones(X.shape[0])
-
         self.covmeans_ = {}
         for p in self.power_list:
             means_p = {}
@@ -848,7 +848,7 @@ class MeanField(BaseEstimator, ClassifierMixin, TransformerMixin):
         pred = Parallel(n_jobs=self.n_jobs)(delayed(self._get_label)(
             x, labs_unique)
             for x in X)
-        return np.array(pred)
+        return np.asarray(pred)
 
     def _predict_distances(self, X):
         """Helper to predict the distance. Equivalent to transform."""
@@ -866,8 +866,8 @@ class MeanField(BaseEstimator, ClassifierMixin, TransformerMixin):
                             metric=self.metric,
                         )
                     )
-            pmin = min(m.items(), key=lambda x: np.sum(x[1]))[0]
-            dist.append(np.array(m[pmin]))
+            pmin = min(m.items(), key=lambda x: nmp.sum(x[1]))[0]
+            dist.append(np.asarray(m[pmin]))
 
         return np.stack(dist)
 

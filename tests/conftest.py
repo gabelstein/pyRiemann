@@ -1,5 +1,6 @@
 import pytest
-import numpy as np
+import torch as np
+import numpy as nmp
 from functools import partial
 
 from pyriemann.datasets import make_matrices, make_masks
@@ -26,7 +27,7 @@ requires_seaborn = partial(requires_module, name="seaborn")
 
 @pytest.fixture
 def rndstate():
-    return np.random.RandomState(1234)
+    return nmp.random.RandomState(1234)
 
 
 @pytest.fixture

@@ -11,7 +11,8 @@ Riemannian geometric medians [2]_, on low-dimensional synthetic datasets.
 #
 # License: BSD (3-clause)
 
-import numpy as np
+import torch as np
+import numpy as nmp
 import matplotlib.pyplot as plt
 
 from sklearn.datasets import make_blobs
@@ -20,7 +21,7 @@ from pyriemann.utils import mean_euclid, mean_riemann
 from pyriemann.utils import median_euclid, median_riemann
 from pyriemann.clustering import Potato
 
-rs = np.random.RandomState(17)
+rs = nmp.random.RandomState(17)
 
 
 ###############################################################################
@@ -42,9 +43,9 @@ X, y = make_blobs(
 )
 is_inlier = (y <= 1)
 
-C_mean = mean_euclid(X[..., np.newaxis])
+C_mean = mean_euclid(X[..., None])
 C_mmed = np.median(X, axis=0)
-C_gmed = median_euclid(X[..., np.newaxis])
+C_gmed = median_euclid(X[..., None])
 
 fig, ax = plt.subplots(figsize=(7, 7))
 fig.suptitle("Mean and median for 2D vectors", fontsize=16)

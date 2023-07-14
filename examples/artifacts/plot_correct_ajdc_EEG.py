@@ -12,7 +12,8 @@ Fourier cospectra (AJDC), applied to artifact correction of EEG [1]_.
 # License: BSD (3-clause)
 
 import gzip
-import numpy as np
+import torch as np
+import numpy as nmp
 from scipy.signal import welch
 from matplotlib import pyplot as plt
 
@@ -69,7 +70,7 @@ window, overlap = sfreq, 0.5
 fmin, fmax = 1, 32
 ajdc = AJDC(window=window, overlap=overlap, fmin=fmin, fmax=fmax, fs=sfreq,
             dim_red={'max_cond': 100})
-ajdc.fit(signal_raw[np.newaxis, np.newaxis, ...])
+ajdc.fit(signal_raw[None, None, ...])
 freqs = ajdc.freqs_
 
 # Plot cospectra in channel space, after trace-normalization by frequency: each
@@ -92,7 +93,7 @@ plot_cospectra(ajdc._cosp_sources, freqs, ylabels=sr_names,
 # ------------
 
 # Estimate sources S applying forward filters B to signal X: S = B X
-source_raw = ajdc.transform(signal_raw[np.newaxis, ...])[0]
+source_raw = ajdc.transform(signal_raw[None, ...])[0]
 
 # Plot sources S
 sr_info = create_info(ch_names=sr_names, ch_types=['misc'] * sr_count,
@@ -142,7 +143,7 @@ plt.show()
 # BSS denoising: blink source is suppressed in source space using activation
 # matrix D, and then applying backward filters A to come back to channel space
 # Denoised signal: Xd = A D S
-signal_denois_raw = ajdc.inverse_transform(source_raw[np.newaxis, ...],
+signal_denois_raw = ajdc.inverse_transform(source_raw[None, ...],
                                            supp=[blink_idx])[0]
 
 # Plot denoised signal Xd

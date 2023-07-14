@@ -11,7 +11,8 @@ detect artifacts in online processing. It is compared to the Riemannian Potato
 #
 # License: BSD (3-clause)
 
-import numpy as np
+import torch as np
+import numpy as nmp
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
 
@@ -218,15 +219,15 @@ def online_detect(t):
     global time, sig, labels, covs_t, covs_z, covs_p
 
     # Online artifact detection
-    rp_label = rp.predict(rp_covs[np.newaxis, t])[0]
-    rp_zscore = rp.transform(rp_covs[np.newaxis, t])
-    rpf_label = rpf.predict([c[np.newaxis, t] for c in rpf_covs])[0]
-    rpf_zscores = rpf.transform([c[np.newaxis, t] for c in rpf_covs])
-    rpf_proba = rpf.predict_proba([c[np.newaxis, t] for c in rpf_covs])
+    rp_label = rp.predict(rp_covs[None, t])[0]
+    rp_zscore = rp.transform(rp_covs[None, t])
+    rpf_label = rpf.predict([c[None, t] for c in rpf_covs])[0]
+    rpf_zscores = rpf.transform([c[None, t] for c in rpf_covs])
+    rpf_proba = rpf.predict_proba([c[None, t] for c in rpf_covs])
     if rp_label == 1:
-        rp.partial_fit(rp_covs[np.newaxis, t], alpha=1 / t)
+        rp.partial_fit(rp_covs[None, t], alpha=1 / t)
     if rpf_label == 1:
-        rpf.partial_fit([c[np.newaxis, t] for c in rpf_covs], alpha=1 / t)
+        rpf.partial_fit([c[None, t] for c in rpf_covs], alpha=1 / t)
 
     # Update data
     time_start = t * interval + test_time_end
@@ -238,7 +239,7 @@ def online_detect(t):
                      eeg_data[:, int(time_start*sfreq):int(time_end*sfreq)]))
     covs_t = np.r_[covs_t, time_start]
     covs_z = np.hstack((covs_z,
-                        np.vstack((rp_zscore[np.newaxis], rpf_zscores.T))))
+                        np.vstack((rp_zscore[None], rpf_zscores.T))))
     covs_p = np.r_[covs_p, rpf_proba]
     if len(covs_p) > test_covs_visu:
         covs_t, covs_z, covs_p = covs_t[1:], covs_z[:, 1:], covs_p[1:]

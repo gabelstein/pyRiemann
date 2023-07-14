@@ -1,5 +1,6 @@
 """Clustering functions."""
-import numpy as np
+import torch as np
+import numpy as nmp
 from scipy.stats import norm, chi2
 from sklearn.base import (BaseEstimator, ClassifierMixin, TransformerMixin,
                           ClusterMixin, clone)
@@ -13,7 +14,7 @@ except ImportError:
 
     def _init_centroids(X, n_clusters, init, random_state, x_squared_norms):
         if random_state is not None:
-            random_state = np.random.RandomState(random_state)
+            random_state = nmp.random.RandomState(random_state)
         return _KMeans(n_clusters=n_clusters, init=init)._init_centroids(
             X,
             x_squared_norms,
@@ -77,7 +78,7 @@ class Kmeans(BaseEstimator, ClassifierMixin, ClusterMixin, TransformerMixin):
         The maximum number of iteration to reach convergence.
     metric : string, default='riemann'
         The type of metric used for centroid and distance estimation.
-    random_state : integer or np.RandomState, optional
+    random_state : integer or np.randomState, optional
         The generator used to initialize the centers. If an integer is
         given, it fixes the seed. Defaults to the global numpy random
         number generator.
@@ -429,9 +430,9 @@ class Potato(BaseEstimator, TransformerMixin, ClassifierMixin):
             self._mdm.covmeans_[0] = geodesic(
                 self._mdm.covmeans_[0], Xm, alpha, metric=self.metric)
 
-            d = np.squeeze(np.log(self._mdm.transform(Xm[np.newaxis, ...])))
+            d = np.squeeze(np.log(self._mdm.transform(Xm[None, ...])))
             self._mean = (1 - alpha) * self._mean + alpha * d
-            self._std = np.sqrt(
+            self._std = nmp.sqrt(
                 (1 - alpha) * self._std**2 + alpha * (d - self._mean)**2)
 
         self.covmean_ = self._mdm.covmeans_[0]

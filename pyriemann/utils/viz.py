@@ -1,5 +1,6 @@
 """Helpers for vizualization."""
-import numpy as np
+import torch as np
+import numpy as nmp
 from ..embedding import SpectralEmbedding, LocallyLinearEmbedding
 
 
@@ -199,7 +200,7 @@ def plot_waveforms(X, display, *, times=None, color='gray', alpha=0.5,
                                 mean[channel] + std[channel], color=color_std)
 
     elif display == 'hist':
-        times_rep = np.repeat(times[np.newaxis, :], n_reps, axis=0)
+        times_rep = np.repeat(times[None, :], n_reps, axis=0)
         for (channel, ax) in zip(channels, axes):
             ax.hist2d(times_rep.ravel(), X[:, channel, :].ravel(),
                       bins=(n_times, n_bins), cmap=cmap)

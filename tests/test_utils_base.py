@@ -1,5 +1,6 @@
 import pytest
-import numpy as np
+import torch as np
+import numpy as nmp
 from numpy.testing import assert_array_almost_equal
 
 from pyriemann.utils.base import (
@@ -27,7 +28,7 @@ def test_expm():
 def test_invsqrtm():
     """Test matrix inverse square root"""
     C = 2 * np.eye(n_channels)
-    Ctrue = (1.0 / np.sqrt(2)) * np.eye(n_channels)
+    Ctrue = (1.0 / nmp.sqrt(2)) * np.eye(n_channels)
     assert_array_almost_equal(invsqrtm(C), Ctrue, decimal=10)
 
 
@@ -48,11 +49,11 @@ def test_powm():
 def test_sqrtm():
     """Test matrix square root"""
     C = 2 * np.eye(n_channels)
-    Ctrue = np.sqrt(2) * np.eye(n_channels)
+    Ctrue = nmp.sqrt(2) * np.eye(n_channels)
     assert_array_almost_equal(sqrtm(C), Ctrue, decimal=10)
 
     C = np.array([[1, -1j], [1j, 1]])
-    Ctrue = np.sqrt(2) / 2 * C
+    Ctrue = nmp.sqrt(2) / 2 * C
     assert_array_almost_equal(sqrtm(C), Ctrue, decimal=10)
 
 
@@ -115,7 +116,7 @@ def test_funm_properties(get_mats, kind):
 
     # invsqrtm
     isC = invsqrtm(C)
-    Eye = np.repeat(np.eye(n_dim)[np.newaxis, :, :], n_matrices, axis=0)
+    Eye = np.repeat(np.eye(n_dim)[None, :, :], n_matrices, axis=0)
     assert_array_almost_equal(isC @ C @ isC, Eye, decimal=10)
     assert_array_almost_equal(isC @ isC, invC, decimal=10)
 

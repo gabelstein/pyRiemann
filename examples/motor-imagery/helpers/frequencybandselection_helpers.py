@@ -6,7 +6,8 @@
 This file contains helper functions for the frequency band selection example
 """
 
-import numpy as np
+import torch as np
+import numpy as nmp
 from mne import Epochs, events_from_annotations
 
 from pyriemann.estimation import Covariances

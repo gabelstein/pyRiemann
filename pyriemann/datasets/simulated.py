@@ -1,4 +1,5 @@
-import numpy as np
+import torch as np
+import numpy as nmp
 from sklearn.utils.validation import check_random_state
 
 from ..utils.mean import mean_riemann
@@ -45,8 +46,8 @@ def make_covariances(n_matrices, n_channels, rs=None, return_params=False,
     """
     rs = check_random_state(rs)
 
-    evals = np.abs(evals_mean + evals_std * rs.randn(n_matrices, n_channels))
-    evecs, _ = np.linalg.qr(rs.randn(n_channels, n_channels))
+    evals = np.abs(evals_mean + evals_std * np.randn(n_matrices, n_channels))
+    evecs, _ = np.linalg.qr(np.randn(n_channels, n_channels))
 
     covmats = np.empty((n_matrices, n_channels, n_channels))
     for i in range(n_matrices):
@@ -108,12 +109,12 @@ def make_matrices(n_matrices, n_dim, kind, rs=None, return_params=False,
         raise ValueError(f"Unsupported matrix kind: {kind}")
 
     rs = check_random_state(rs)
-    X = rs.randn(n_matrices, n_dim, n_dim)
+    X = np.randn(n_matrices, n_dim, n_dim, dtype=np.double)
     if kind == "real":
         return X
 
     if kind in ("comp", "hpd", "hpsd"):
-        X = X + 1j * rs.randn(n_matrices, n_dim, n_dim)
+        X = X + 1j * np.randn(n_matrices, n_dim, n_dim)
         if kind == "comp":
             return X
 
@@ -143,7 +144,7 @@ def make_matrices(n_matrices, n_dim, kind, rs=None, return_params=False,
         for i in range(n_matrices):
             mats[i] = (evecs * evals[i]) @ evecs.conj().T
     else:
-        mats = (evecs * evals[:, np.newaxis, :]) @ np.swapaxes(evecs.conj(),
+        mats = (evecs * evals[:, None, :]) @ np.swapaxes(evecs.conj(),
                                                                -2, -1)
 
     if return_params:
@@ -181,7 +182,7 @@ def make_masks(n_masks, n_dim0, n_dim1_min, rs=None):
     masks = []
     for _ in range(n_masks):
         n_dim1 = rs.randint(n_dim1_min, n_dim0, size=1)[0]
-        mask, _ = np.linalg.qr(rs.randn(n_dim0, n_dim1))
+        mask, _ = np.linalg.qr(np.randn(n_dim0, n_dim1))
         masks.append(mask)
     return masks
 
@@ -250,7 +251,7 @@ def make_gaussian_blobs(n_matrices=100, n_dim=2, class_sep=1.0, class_disp=1.0,
 
     if centers is None:
         C0_in = np.eye(n_dim)  # first class mean at Identity at first
-        Pv = rs.randn(n_dim, n_dim)  # create random tangent vector
+        Pv = np.randn(n_dim, n_dim)  # create random tangent vector
         Pv = (Pv + Pv.T)/2   # symmetrize
         Pv = Pv / np.linalg.norm(Pv)  # normalize
         P = expm(Pv)  # take it back to the SPD manifold
@@ -355,7 +356,7 @@ def make_outliers(n_matrices, mean, sigma, outlier_coeff=10,
         Oi = generate_random_spd_matrix(n_dim=n_dim, random_state=random_state)
         epsilon_num = outlier_coeff * sigma * n_dim
         epsilon_den = distance_riemann(Oi, np.eye(n_dim), squared=True)
-        epsilon = np.sqrt(epsilon_num / epsilon_den)
+        epsilon = nmp.sqrt(epsilon_num / epsilon_den)
         outliers[i] = mean_sqrt @ powm(Oi, epsilon) @ mean_sqrt
 
     return outliers
@@ -422,7 +423,7 @@ def make_classification_transfer(n_matrices, class_sep=3.0, class_disp=1.0,
         sigma=class_disp,
         random_state=seeds[0])
     y1_source = [class_names[0]] * n_matrices
-    Pv = rs.randn(n_dim, n_dim)  # create random tangent vector
+    Pv = np.randn(n_dim, n_dim)  # create random tangent vector
     Pv = (Pv + Pv.T)/2  # symmetrize
     Pv /= np.linalg.norm(Pv)  # normalize
     P = expm(Pv)  # take it back to the SPD manifold
@@ -465,7 +466,7 @@ def make_classification_transfer(n_matrices, class_sep=3.0, class_disp=1.0,
     # move the points in X_target with a random matrix A = P * Q
 
     # create SPD matrix for the translation between domains
-    Pv = rs.randn(n_dim, n_dim)  # create random tangent vector
+    Pv = np.randn(n_dim, n_dim)  # create random tangent vector
     Pv = (Pv + Pv.T)/2  # symmetrize
     Pv /= np.linalg.norm(Pv)  # normalize
     P = expm(Pv)  # take it to the manifold

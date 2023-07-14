@@ -1,5 +1,6 @@
 """Code for channel selection."""
-import numpy as np
+import torch as np
+import numpy as nmp
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from .utils.distance import distance
@@ -148,7 +149,7 @@ class FlatChannelRemover(BaseEstimator, TransformerMixin):
         X : ndarray, shape (n_matrices, n_good_channels, n_times)
             Multi-channel time-series without flat channels.
         """
-        std = np.mean(np.std(X, axis=2) ** 2, 0)
+        std = np.mean(np.std(X, dim=2) ** 2, 0)
         self.channels_ = np.where(std)[0]
         return self
 

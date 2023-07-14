@@ -17,7 +17,8 @@ of the data points from each dataset.
 
 from tqdm import tqdm
 
-import numpy as np
+import torch as np
+import numpy as nmp
 import matplotlib.pyplot as plt
 from sklearn.pipeline import make_pipeline
 from sklearn.model_selection import StratifiedShuffleSplit

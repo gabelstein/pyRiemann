@@ -1,5 +1,6 @@
 from conftest import get_metrics
-import numpy as np
+import torch as np
+import numpy as nmp
 from numpy.testing import assert_array_equal
 import pytest
 from pyriemann.clustering import (Kmeans, KmeansPerClassTransform, Potato,
@@ -135,9 +136,9 @@ class TestRiemannianClustering(ClusteringTestCase):
         clf.fit(covmats)
         clf.partial_fit(covmats)
         if n is None:
-            clf.partial_fit(covmats[np.newaxis, 0])  # fit one covmat at a time
+            clf.partial_fit(covmats[None, 0])  # fit one covmat at a time
         else:
-            clf.partial_fit([c[np.newaxis, 0] for c in covmats])
+            clf.partial_fit([c[None, 0] for c in covmats])
 
     def clf_fit_independence(self, clust, covmats, n=None):
         if n is None:

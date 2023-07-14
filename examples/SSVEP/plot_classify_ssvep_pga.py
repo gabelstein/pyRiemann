@@ -13,7 +13,8 @@ before this example.
 #
 # License: BSD (3-clause)
 
-import numpy as np
+import torch as np
+import numpy as nmp
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
@@ -158,9 +159,9 @@ def online_classify(t):
     global colors, ts_visu
 
     # Online classification
-    y = mdm.predict(x_test[np.newaxis, t])
+    y = mdm.predict(x_test[None, t])
     color = clist[int(y[0] - 1)]
-    ts_test = pga.transform(x_test[np.newaxis, t])
+    ts_test = pga.transform(x_test[None, t])
 
     # Update data
     colors.append(color)

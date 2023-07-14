@@ -1,6 +1,7 @@
 """Aproximate joint diagonalization algorithms."""
 
-import numpy as np
+import torch as np
+import numpy as nmp
 from .utils import check_weights
 
 
@@ -147,7 +148,7 @@ def ajd_pham(X, *, init=None, eps=1e-6, n_iter_max=15, sample_weight=None):
         D.-T. Pham. SIAM Journal on Matrix Analysis and Applications, Volume 22
         Issue 4, 2000
     """
-    n_matrices, _, _ = X.shape
+    n_matrices, n_channels, n_channels = X.shape
     normalized_weight = check_weights(
         sample_weight,
         n_matrices,
@@ -155,12 +156,12 @@ def ajd_pham(X, *, init=None, eps=1e-6, n_iter_max=15, sample_weight=None):
     )  # sum = 1
 
     # Reshape input matrix
-    A = np.concatenate(X, axis=0).T
-
+    A = np.reshape(X, (n_matrices*n_channels, n_channels)).T
+    print(A.shape)
     # Init variables
     n_channels, n_matrices_x_channels = A.shape
     if init is None:
-        V = np.eye(n_channels)
+        V = np.eye(n_channels, dtype=np.double)
     else:
         V = _check_init_diag(init, n_channels)
     epsilon = n_channels * (n_channels - 1) * eps
@@ -175,38 +176,38 @@ def ajd_pham(X, *, init=None, eps=1e-6, n_iter_max=15, sample_weight=None):
                 c1 = A[ii, Ii]
                 c2 = A[jj, Ij]
 
-                g12 = np.average(A[ii, Ij] / c1, weights=normalized_weight)
-                g21 = np.average(A[ii, Ij] / c2, weights=normalized_weight)
+                g12 = np.mean((A[ii, Ij] / c1)*normalized_weight)
+                g21 = np.mean((A[ii, Ij] / c2)*normalized_weight)
 
-                omega21 = np.average(c1 / c2, weights=normalized_weight)
-                omega12 = np.average(c2 / c1, weights=normalized_weight)
-                omega = np.sqrt(omega12 * omega21)
+                omega21 = np.mean((c1 / c2)*normalized_weight)
+                omega12 = np.mean((c2 / c1)*normalized_weight)
+                omega = nmp.sqrt(omega12 * omega21)
 
-                tmp = np.sqrt(omega21 / omega12)
+                tmp = nmp.sqrt(omega21 / omega12)
                 tmp1 = (tmp * g12 + g21) / (omega + 1)
                 tmp2 = (tmp * g12 - g21) / max(omega - 1, 1e-9)
 
                 h12 = tmp1 + tmp2
                 h21 = np.conj((tmp1 - tmp2) / tmp)
 
-                decr += n_matrices * (g12 * np.conj(h12) + g21 * h21) / 2.0
+                decr += n_matrices * (g12 * nmp.conj(h12) + g21 * h21) / 2.0
 
-                tmp = 1 + 1.j * 0.5 * np.imag(h12 * h21)
+                tmp = 1 + 1.j * 0.5 * nmp.imag(nmp.asarray(h12) * nmp.asarray(h21))
                 tmp = np.real(tmp + np.sqrt(tmp ** 2 - h12 * h21))
-                tau = np.array([[1, -h12 / tmp], [-h21 / tmp, 1]])
+                tau = np.asarray([[1, -h12 / tmp], [-h21 / tmp, 1]], dtype=np.double)
 
-                A[[ii, jj], :] = np.dot(tau, A[[ii, jj], :])
-                tmp = np.c_[A[:, Ii], A[:, Ij]]
-                tmp = np.reshape(tmp, (n_channels * n_matrices, 2), order='F')
-                tmp = np.dot(tmp, tau.T)
+                A[[ii, jj], :] = tau@A[[ii, jj], :]
+                tmp = np.cat(([A[:, Ii], A[:, Ij]]), dim=1)
+                tmp = np.reshape(tmp.T, (n_channels * n_matrices, 2))
+                tmp = tmp@tau.T
 
-                tmp = np.reshape(tmp, (n_channels, n_matrices * 2), order='F')
+                tmp = np.reshape(tmp.T, (n_channels, n_matrices * 2))
                 A[:, Ii] = tmp[:, :n_matrices]
                 A[:, Ij] = tmp[:, n_matrices:]
-                V[[ii, jj], :] = np.dot(tau, V[[ii, jj], :])
+                V[[ii, jj], :] = tau@V[[ii, jj], :]
         if decr < epsilon:
             break
-    D = np.reshape(A, (n_channels, -1, n_channels)).transpose(1, 0, 2)
+    D = np.reshape(A, (n_channels, -1, n_channels)).transpose(0, 1)
     return V, D
 
 
@@ -269,7 +270,7 @@ def uwedge(X, *, init=None, eps=1e-7, n_iter_max=100):
 
     if init is None:
         E, H = np.linalg.eig(M[:, 0:d])
-        W_est = H.T / np.sqrt(np.abs(E))[:, np.newaxis]
+        W_est = H.T / np.sqrt(np.abs(E))[:, None]
     else:
         W_est = _check_init_diag(init, d)
 

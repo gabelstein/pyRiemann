@@ -14,7 +14,8 @@ the Identity matrix (recenter) [1]_. We use data from the Physionet BCI
 database and compare the classification performance of MDM with each strategy.
 """
 
-import numpy as np
+import torch as np
+import numpy as nmp
 from tqdm import tqdm
 from sklearn.pipeline import make_pipeline
 from sklearn.model_selection import StratifiedShuffleSplit

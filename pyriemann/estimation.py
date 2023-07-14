@@ -1,5 +1,6 @@
 """Estimation of SPD matrices."""
-import numpy as np
+import torch as np
+import numpy as nmp
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.covariance import shrunk_covariance
 from sklearn.metrics.pairwise import pairwise_kernels
@@ -422,7 +423,7 @@ class BlockCovariances(BaseEstimator, TransformerMixin):
             n_blocks = n_channels // self.block_size
             blocks = [self.block_size for b in range(n_blocks)]
 
-        elif isinstance(self.block_size, (list, np.ndarray)):
+        elif isinstance(self.block_size, (list, type(np.tensor([])))):
             blocks = self.block_size
 
         else:

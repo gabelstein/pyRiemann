@@ -15,7 +15,8 @@ for mean-covariance matrices used by the classification algorithm.
 #
 # License: BSD (3-clause)
 
-import numpy as np
+import torch as np
+import numpy as nmp
 from matplotlib import pyplot as plt
 from pyriemann.estimation import XdawnCovariances
 from pyriemann.classification import MDM

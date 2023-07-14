@@ -1,5 +1,6 @@
 from numpy.testing import assert_array_almost_equal
-import numpy as np
+import torch as np
+import numpy as nmp
 from scipy.linalg import block_diag
 from scipy.signal import welch, csd, coherence as coherence_sp
 import pytest

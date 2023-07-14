@@ -1,4 +1,5 @@
-import numpy as np
+import torch as np
+import numpy as nmp
 import pytest
 from pytest import approx
 
@@ -55,7 +56,7 @@ def test_median_euclid_1d(n_values, rndstate):
     """Compare geometric Euclidean median to marginal median in 1D"""
     values = 100 * rndstate.randn(n_values)
     np_med = np.median(values)
-    py_med = median_euclid(values[..., np.newaxis, np.newaxis])[0, 0]
+    py_med = median_euclid(values[..., None, None])[0, 0]
     assert np_med == approx(py_med)
 
 

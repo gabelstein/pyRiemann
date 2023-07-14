@@ -10,7 +10,8 @@ impact on classification [1]_. Kernel estimators are also compared [2]_.
 #
 # License: BSD (3-clause)
 
-import numpy as np
+import torch as np
+import numpy as nmp
 import pandas as pd
 from matplotlib import pyplot as plt
 import seaborn as sns
@@ -34,11 +35,11 @@ from pyriemann.classification import MDM
 # Generate synthetic data, sampled from a distribution considered as the
 # groundtruth.
 
-rs = np.random.RandomState(42)
+rs = nmp.random.RandomState(42)
 n_matrices, n_channels, n_times = 10, 5, 1000
-var = 2.0 + 0.1 * rs.randn(n_matrices, n_channels)
+var = 2.0 + 0.1 * np.randn(n_matrices, n_channels)
 A = 2 * rs.rand(n_channels, n_channels) - 1
-A /= np.linalg.norm(A, axis=1)[:, np.newaxis]
+A /= np.linalg.norm(A, axis=1)[:, None]
 true_covs = np.empty(shape=(n_matrices, n_channels, n_channels))
 X = np.empty(shape=(n_matrices, n_channels, n_times))
 for i in range(n_matrices):

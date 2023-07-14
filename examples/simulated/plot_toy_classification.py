@@ -16,7 +16,8 @@ distinctiveness [1]_ vary when Delta increases.
 #
 # License: BSD (3-clause)
 
-import numpy as np
+import torch as np
+import numpy as nmp
 import matplotlib.pyplot as plt
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 

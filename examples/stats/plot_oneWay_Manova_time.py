@@ -5,7 +5,8 @@ One Way manova time
 
 One way manova to compare Left vs Right in time.
 """
-import numpy as np
+import torch as np
+import numpy as nmp
 import seaborn as sns
 
 from time import time

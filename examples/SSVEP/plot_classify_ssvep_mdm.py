@@ -12,7 +12,8 @@ is trained to predict a 4-class problem for an offline setup.
 #
 # License: BSD (3-clause)
 
-import numpy as np
+import torch as np
+import numpy as nmp
 import matplotlib.pyplot as plt
 
 from mne import find_events, Epochs
@@ -50,7 +51,7 @@ eeg_data = raw.get_data()
 
 n_seconds = 2
 time = np.linspace(0, n_seconds, n_seconds * sfreq,
-                   endpoint=False)[np.newaxis, :]
+                   endpoint=False)[None, :]
 plt.figure(figsize=(10, 4))
 plt.plot(time.T, eeg_data[np.array(raw.ch_names) == 'Oz', :n_seconds*sfreq].T,
          color='C0', lw=0.5)
@@ -104,7 +105,7 @@ epochs = Epochs(raw_ext, events, event_id, tmin=2, tmax=5, baseline=None)
 
 n_seconds = 3
 time = np.linspace(0, n_seconds, n_seconds * sfreq,
-                   endpoint=False)[np.newaxis, :]
+                   endpoint=False)[None, :]
 channels = range(0, len(raw_ext.ch_names), len(raw.ch_names))
 plt.figure(figsize=(7, 5))
 for f, c in zip(frequencies, channels):

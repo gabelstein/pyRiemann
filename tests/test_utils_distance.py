@@ -1,5 +1,6 @@
 from conftest import get_distances
-import numpy as np
+import torch as np
+import numpy as nmp
 from numpy.testing import assert_array_almost_equal
 from scipy.spatial.distance import euclidean, mahalanobis
 import pytest

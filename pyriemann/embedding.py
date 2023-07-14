@@ -1,6 +1,7 @@
 """Embedding SPD matrices via manifold learning techniques."""
 
-import numpy as np
+import torch as np
+import numpy as nmp
 from scipy.linalg import solve, eigh
 from scipy.sparse import csr_matrix
 
