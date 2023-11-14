@@ -4,9 +4,17 @@ import numpy as np
 
 from .base import invsqrtm, logm
 from .mean import mean_riemann
+from .distance import pairwise_distance
 
+###############################################################################
 
-def kernel_euclid(X, Y=None, *, reg=1e-10, **kwargs):
+call_strings ={
+    'gaussian': 'distance2_exponential',
+    'laplacian': 'distance_exponential',
+    'rationalquadratic': 'distance2_rationalquadratic',
+}
+
+def kernel_euclid(X, Y=None, *, ktype='canonical', reg=1e-10, **kwargs):
     r"""Euclidean kernel between two sets of matrices.
 
     Calculates the Euclidean kernel matrix :math:`\mathbf{K}` of inner products
@@ -39,13 +47,11 @@ def kernel_euclid(X, Y=None, *, reg=1e-10, **kwargs):
     --------
     kernel
     """
-    def kernelfct(X, Cref):
-        return X
 
-    return _apply_matrix_kernel(kernelfct, X, Y, reg=reg)
+    K = _apply_matrix_kernel(_euclid, X, Y, reg=reg)
+    return K
 
-
-def kernel_logeuclid(X, Y=None, *, reg=1e-10, **kwargs):
+def kernel_log(X, Y=None, *, ktype='canonical', reg=1e-10, **kwargs):
     r"""Log-Euclidean kernel between two sets of SPD matrices.
 
     Calculates the Log-Euclidean kernel matrix :math:`\mathbf{K}` of inner
@@ -87,13 +93,60 @@ def kernel_logeuclid(X, Y=None, *, reg=1e-10, **kwargs):
         A. Barachant, S. Bonnet, M. Congedo and C. Jutten. Neurocomputing,
         Elsevier, 2013, 112, pp.172-178.
     """
-    def kernelfct(X, Cref):
-        return logm(X)
 
-    return _apply_matrix_kernel(kernelfct, X, Y, reg=reg)
+    K = _apply_matrix_kernel(_log, X, Y, reg=reg)
+    return K
 
 
-def kernel_riemann(X, Y=None, *, Cref=None, reg=1e-10):
+def kernel_logeuclid(X, Y=None, *, Cref=None, ktype='canonical', reg=1e-10,
+                     **kwargs):
+    r"""Log-Euclidean kernel between two sets of SPD matrices.
+
+    Calculates the Log-Euclidean kernel matrix :math:`\mathbf{K}` of inner
+    products of two sets :math:`\mathbf{X}` and :math:`\mathbf{Y}` of SPD
+    matrices in :math:`\mathbb{R}^{n \times n}` by calculating pairwise
+    products [1]_:
+
+    .. math::
+        \mathbf{K}_{i,j} = \text{tr}(\log(\mathbf{X}_i) \log(\mathbf{Y}_j))
+
+    Parameters
+    ----------
+    X : ndarray, shape (n_matrices_X, n, n)
+        First set of SPD matrices.
+    Y : None | ndarray, shape (n_matrices_Y, n, n), default=None
+        Second set of SPD matrices. If None, Y is set to X.
+    reg : float, default=1e-10
+        Regularization parameter to mitigate numerical errors in kernel
+        matrix estimation.
+
+    Returns
+    -------
+    K : ndarray, shape (n_matrices_X, n_matrices_Y)
+        The Log-Euclidean kernel matrix between X and Y.
+
+    Notes
+    -----
+    .. versionadded:: 0.3
+
+    See Also
+    --------
+    kernel
+
+    References
+    ----------
+    .. [1] `Classification of covariance matrices using a Riemannian-based
+        kernel for BCI applications
+        <https://hal.archives-ouvertes.fr/hal-00820475/>`_
+        A. Barachant, S. Bonnet, M. Congedo and C. Jutten. Neurocomputing,
+        Elsevier, 2013, 112, pp.172-178.
+    """
+
+    return _apply_matrix_kernel(_logeuclid, X, Y, Cref=Cref, reg=reg)
+
+
+def kernel_riemann(X, Y=None, *, Cref=None, ktype='canonical', reg=1e-10,
+                   **kwargs):
     r"""Affine-invariant Riemannian kernel between two sets of SPD matrices.
 
     Calculates the affine-invariant Riemannian kernel matrix :math:`\mathbf{K}`
@@ -141,19 +194,86 @@ def kernel_riemann(X, Y=None, *, Cref=None, reg=1e-10):
         A. Barachant, S. Bonnet, M. Congedo and C. Jutten. Neurocomputing,
         Elsevier, 2013, 112, pp.172-178.
     """
-    def kernelfct(X, Cref):
-        if Cref is None:
-            Cref = mean_riemann(X)
 
-        C_invsq = invsqrtm(Cref)
-        X_ = logm(C_invsq @ X @ C_invsq)
-        return X_
-
-    return _apply_matrix_kernel(kernelfct, X, Y, Cref=Cref, reg=reg)
+    return _apply_matrix_kernel(_riemann, X, Y, Cref=Cref, reg=reg)
 
 
 ###############################################################################
 
+def _log(X, Cref):
+    """Feature map for Log-Euclidean kernel."""
+    X_ = logm(X)
+    return X_
+
+
+def _logeuclid(X, Cref):
+    """Feature map for Log-Euclidean kernel."""
+    X_ = logm(X) - logm(Cref)
+    return X_
+
+
+def _riemann(X, Cref):
+    """Feature map for affine-invariant Riemannian kernel."""
+    if Cref is None:
+        Cref = mean_riemann(X)
+
+    C_invsq = invsqrtm(Cref)
+    X_ = logm(C_invsq @ X @ C_invsq)
+    return X_
+
+
+def _euclid(X, Cref):
+    """Feature map for Euclidean kernel."""
+    return X
+
+
+###############################################################################
+'''Inner product kernels'''
+
+
+def _polynomial(K, r=0, s=1):
+    """Polynomial function."""
+    return (K + r) ** s
+
+
+def _exponential(K, gamma=1):
+    """Exponential function."""
+    return np.exp(-K * gamma)
+
+
+def _sigmoid(K, gamma=1, r=0):
+    """Sigmoid function."""
+    return np.tanh(gamma * K + r)
+
+
+###############################################################################
+'''Distance kernels'''
+
+
+# might be wrong
+def _periodic(K, gamma=1):
+    """Periodic function."""
+    return np.exp(-2 * np.sin(np.pi * K / gamma) ** 2)
+
+
+def _rationalquadratic(K, alpha=1):
+    """Rational quadratic function."""
+    return (1 + K / (2 * alpha)) ** (-alpha)
+
+
+###############################################################################
+
+def _distance(X, Y=None, *,metric='riemann', squared=False):
+    distances = pairwise_distance(X, Y, metric=metric, squared=squared)
+    return distances
+
+
+def _distance2(X, Y=None,* ,metric='riemann', squared=True):
+    distances = pairwise_distance(X, Y, metric=metric, squared=squared)
+    return distances
+
+
+###############################################################################
 
 def _check_dimensions(X, Y, Cref):
     """Check for matching dimensions in X, Y and Cref."""
@@ -193,7 +313,8 @@ def _apply_matrix_kernel(kernel_fct, X, Y=None, *, Cref=None, reg=1e-10):
     return K
 
 
-def kernel(X, Y=None, *, Cref=None, metric='riemann', reg=1e-10):
+def kernel(X, Y=None, *,
+           Cref=None, metric='riemann', ktype='canonical', reg=1e-10):
     """Kernel matrix between matrices according to a specified metric.
 
     Calculates the kernel matrix K of inner products of two sets X and Y of
@@ -230,7 +351,7 @@ def kernel(X, Y=None, *, Cref=None, metric='riemann', reg=1e-10):
     kernel_riemann
     """
     try:
-        return globals()[f'kernel_{metric}'](X, Y, Cref=Cref, reg=reg)
+        return globals()[f'kernel_{metric}'](X, Y, Cref=Cref, ktype='canonical', reg=reg)
     except KeyError:
         raise ValueError("Kernel metric must be 'euclid', 'logeuclid', or "
                          "'riemann'.")
