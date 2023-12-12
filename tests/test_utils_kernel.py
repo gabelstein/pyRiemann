@@ -7,13 +7,19 @@ from pyriemann.utils.kernel import (
     kernel,
     kernel_euclid,
     kernel_logeuclid,
-    kernel_riemann
+    kernel_riemann,
+
+    _euclid,
+    _logeuclid,
+    _riemann,
+    _log,
 )
 from pyriemann.utils.mean import mean_covariance
 from pyriemann.utils.test import is_sym_pos_semi_def as is_spsd
 
 rker_str = ['euclid', 'logeuclid', 'riemann']
 rker_fct = [kernel_euclid, kernel_logeuclid, kernel_riemann]
+feature_maps = [_euclid, _logeuclid, _riemann, _log]
 
 
 @pytest.mark.parametrize("ker", rker_fct)
@@ -106,3 +112,10 @@ def test_riemann_correctness(get_mats):
     tensor = np.tensordot(log_X, log_X.T, axes=1)
     K1 = np.trace(tensor, axis1=1, axis2=2)
     assert_array_almost_equal(K, K1)
+@pytest.mark.parametrize("feature_map", feature_maps)
+def test_feature_map(feature_map, get_mats):
+    n_matrices, n_channels = 5, 3
+    X = get_mats(n_matrices, n_channels, "spd")
+    K = feature_map(X, Cref=np.eye(n_channels))
+    assert K.shape == (n_matrices, n_channels, n_channels)
+
