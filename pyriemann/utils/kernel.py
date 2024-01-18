@@ -148,8 +148,8 @@ def kernel_riemann(X, Y=None, *, Cref=None, reg=1e-10, **kwargs):
                                 metric='riemann')
 
 
-def kernel_canonical(X, Y=None, *, metric='riemann', Cref=None, reg=1e-10,
-                     **kwargs):
+def kernel_canonical(X, Y=None, *,
+                     metric='riemann', Cref=None, reg=1e-10, **kwargs):
     r"""Canonical kernel between two sets of SPD matrices.
 
         Calculates the canonical kernel matrix :math:`\mathbf{K}` of inner
@@ -203,6 +203,8 @@ def kernel_canonical(X, Y=None, *, metric='riemann', Cref=None, reg=1e-10,
 
 ###############################################################################
 '''Distance Kernels.'''
+# decorator for distance kernels
+
 
 
 def kernel_gaussian(X, Y=None, *, metric='riemann', gamma=1, reg=0):
@@ -244,7 +246,7 @@ def kernel_gaussian(X, Y=None, *, metric='riemann', gamma=1, reg=0):
     kernel
     """
     K = pairwise_distance(X, Y, metric=metric, squared=True)
-    K = _exponential(K, gamma=-gamma)
+    K = _exponential(K, gamma=gamma)
     K = _regularize_kernel(K, reg=reg)
     return K
 
@@ -390,8 +392,8 @@ def kernel_rational_quadratic(X, Y=None, *, metric='riemann', alpha=1, reg=0):
     return K
 
 
-def kernel_inverse_multiquadratic(X, Y=None, *, metric='riemann', beta=1,
-                                    reg=0):
+def kernel_inverse_multiquadratic(X, Y=None, *,
+                                  metric='riemann', beta=1, reg=0):
         """
         Inverse multiquadratic kernel between two sets of SPD matrices.
 
@@ -435,7 +437,8 @@ def kernel_inverse_multiquadratic(X, Y=None, *, metric='riemann', beta=1,
         kernel
         """
         K = pairwise_distance(X, Y, metric=metric, squared=True)
-        K = _inverse_multiquadratic(K, beta=beta, reg=reg)
+        K = _inverse_multiquadratic(K, beta=beta)
+        K = _regularize_kernel(K, reg=reg)
         return K
 
 
@@ -443,8 +446,8 @@ def kernel_inverse_multiquadratic(X, Y=None, *, metric='riemann', beta=1,
 '''Inner Product Kernels'''
 
 
-def kernel_polynomial(X, Y=None, *, Cref=None, reg=10e-10, metric='riemann',
-                      r=0, s=1):
+def kernel_polynomial(X, Y=None, *,
+                      Cref=None, reg=10e-10, metric='riemann', r=0, s=1):
     """Polynomial kernel between two sets of SPD matrices.
 
     Calculates the polynomial kernel matrix :math:`\mathbf{K}` of inner products
@@ -495,55 +498,55 @@ def kernel_polynomial(X, Y=None, *, Cref=None, reg=10e-10, metric='riemann',
     return K
 
 
-def kernel_exponential(X, Y=None, *, Cref=None, reg=10e-10, metric='riemann',
-                          gamma=1):
-     """Exponential kernel between two sets of SPD matrices.
+def kernel_exponential(X, Y=None, *,
+                       Cref=None, reg=0, metric='riemann', gamma=1):
+    """Exponential kernel between two sets of SPD matrices.
 
-     Calculates the exponential kernel matrix :math:`\mathbf{K}` of inner
-     products of two sets :math:`\mathbf{X}` and :math:`\mathbf{Y}` of SPD
-     matrices in :math:`\mathbb{R}^{n \times n}` by calculating pairwise
-     products:
+    Calculates the exponential kernel matrix :math:`\mathbf{K}` of inner
+    products of two sets :math:`\mathbf{X}` and :math:`\mathbf{Y}` of SPD
+    matrices in :math:`\mathbb{R}^{n \times n}` by calculating pairwise
+    products:
 
-     .. math::
-          \mathbf{K}_{i,j} = \exp(-\gamma \text{tr}(\mathbf{X}_i^T \mathbf{Y}_j))
+    .. math::
+      \mathbf{K}_{i,j} = \exp(-\gamma \text{tr}(\mathbf{X}_i^T \mathbf{Y}_j))
 
-     Parameters
-     ----------
-     X : ndarray, shape (n_matrices_X, n, n)
-          First set of SPD matrices.
-     Y : None | ndarray, shape (n_matrices_Y, n, n), default=None
-          Second set of SPD matrices. If None, Y is set to X.
-     Cref : None | ndarray, shape (n, n), default=None
-          Reference point for the tangent space and inner product calculation.
-          If None, Cref is calculated as the Riemannian mean of X.
-     reg : float, default=1e-10
-          Regularization parameter to mitigate numerical errors in kernel
-          matrix estimation.
-     metric : {'euclid', 'logeuclid', 'riemann'}, default='riemann'
-          The type of metric used for tangent space and mean estimation.
-     gamma : float, default=1
-          Kernel parameter.
+    Parameters
+    ----------
+    X : ndarray, shape (n_matrices_X, n, n)
+      First set of SPD matrices.
+    Y : None | ndarray, shape (n_matrices_Y, n, n), default=None
+      Second set of SPD matrices. If None, Y is set to X.
+    Cref : None | ndarray, shape (n, n), default=None
+      Reference point for the tangent space and inner product calculation.
+      If None, Cref is calculated as the Riemannian mean of X.
+    reg : float, default=1e-10
+      Regularization parameter to mitigate numerical errors in kernel
+      matrix estimation.
+    metric : {'euclid', 'logeuclid', 'riemann'}, default='riemann'
+      The type of metric used for tangent space and mean estimation.
+    gamma : float, default=1
+      Kernel parameter.
 
-     Returns
-     -------
-     K : ndarray, shape (n_matrices_X, n_matrices_Y)
-          The exponential kernel matrix between X and Y.
+    Returns
+    -------
+    K : ndarray, shape (n_matrices_X, n_matrices_Y)
+      The exponential kernel matrix between X and Y.
 
-     Notes
-     -----
-     .. versionadded:: 0.6
+    Notes
+    -----
+    .. versionadded:: 0.6
 
-     See Also
-     --------
-     kernel
+    See Also
+    --------
+    kernel
 
-     """
-     feature_map = globals()[f'_{metric}']
-     K = _apply_matrix_kernel(feature_map, X, Y, Cref=Cref, reg=0,
-                              metric=metric)
-     K = _exponential(K, gamma=gamma)
-     K = _regularize_kernel(K, reg=reg)
-     return K
+    """
+    feature_map = globals()[f'_{metric}']
+    K = _apply_matrix_kernel(feature_map, X, Y, Cref=Cref, reg=reg,
+                          metric=metric)
+    K = _exponential(K, gamma=-gamma)
+    K = _regularize_kernel(K, reg=reg)
+    return K
 
 
 def kernel_sigmoid(X, Y=None, *, Cref=None, reg=10e-10, metric='riemann',
@@ -602,6 +605,47 @@ def kernel_sigmoid(X, Y=None, *, Cref=None, reg=10e-10, metric='riemann',
 ###############################################################################
 '''Other Kernels'''
 
+
+def kernel_frobenius(X, Y=None, *, reg=1e-10, **kwargs):
+    r"""Frobenius inner product kernel between two sets of matrices.
+
+    Calculates the Frobenius inner product kernel matrix :math:`\mathbf{K}` of
+    inner products of two sets :math:`\mathbf{X}` and :math:`\mathbf{Y}` of
+    matrices in :math:`\mathbb{R}^{n \times m}` by calculating pairwise
+    products:
+
+    .. math::
+        \mathbf{K}_{i,j} = \text{tr}(\mathbf{X}_i^T \mathbf{Y}_j)
+
+    Parameters
+    ----------
+    X : ndarray, shape (n_matrices_X, n, m)
+        First set of matrices.
+    Y : None | ndarray, shape (n_matrices_Y, n, m), default=None
+        Second set of matrices. If None, Y is set to X.
+    reg : float, default=1e-10
+        Regularization parameter to mitigate numerical errors in kernel
+        matrix estimation.
+
+    Returns
+    -------
+    K : ndarray, shape (n_matrices_X, n_matrices_Y)
+        The Frobenius inner product kernel matrix between X and Y.
+
+    Notes
+    -----
+    .. versionadded:: 0.6
+
+    See Also
+    --------
+    kernel
+    """
+    K = _apply_matrix_kernel(_euclid,
+                             X,
+                             Y,
+                             reg=reg,
+                             Cref=np.zeros(X.shape[-2:]))
+    return K
 
 def kernel_log(X, Y=None, *, reg=1e-10, **kwargs):
     r"""Log-Euclidean kernel between two sets of SPD matrices.
@@ -732,6 +776,7 @@ def kernel_row_feature(X, Y=None, *,
 
     return full_res
 
+
 ###############################################################################
 '''Feature Maps.'''
 
@@ -752,14 +797,14 @@ def _riemann(X, Cref):
     X_ = logm(C_invsq @ X @ C_invsq)
     return X_
 
-def _euclid(X, Cref=None):
+
+def _euclid(X, Cref):
     """Feature map for Euclidean kernel."""
-    return X
+    return X - Cref
 
 
 def _det(X, Cref=None):
     """Feature map for determinant kernel."""
-    # TODO: determinant of block diagonal matrix is product of determinants
     return np.linalg.det(X)
 
 
@@ -774,7 +819,7 @@ def _polynomial(K, r=1, s=2):
 
 def _exponential(K, gamma=1):
     """Exponential function."""
-    return np.exp(- K * gamma)
+    return np.exp(K * gamma)
 
 
 def _sigmoid(K, gamma=1, r=0):
@@ -793,10 +838,9 @@ def _rational_quadratic(K, alpha=1, l=1):
     return (1 + K / (2 * alpha*l**2)) ** (-alpha)
 
 
-def _inverse_multiquadratic(K, beta=1, reg=0):
+def _inverse_multiquadratic(K, beta=1):
     """Inverse multiquadratic function."""
     K = (1 + K) ** (-beta / 2)
-    K = _regularize_kernel(K, reg=reg)
     return K
 
 

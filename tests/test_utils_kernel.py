@@ -8,6 +8,7 @@ from pyriemann.utils.kernel import (
     kernel_euclid,
     kernel_logeuclid,
     kernel_riemann,
+    kernel_frobenius,
 
     _euclid,
     _logeuclid,
@@ -87,12 +88,12 @@ def test_input_dimension_error(ker, get_mats):
 
 
 @pytest.mark.parametrize("n_dim0, n_dim1", [(4, 4), (4, 5), (5, 4)])
-def test_euclid(n_dim0, n_dim1, rndstate):
+def test_frobenius(n_dim0, n_dim1, rndstate):
     """Test Euclidean kernel for generic matrices"""
     n_matrices_X, n_matrices_Y = 2, 3
     X = rndstate.randn(n_matrices_X, n_dim0, n_dim1)
     Y = rndstate.randn(n_matrices_Y, n_dim0, n_dim1)
-    K = kernel_euclid(X, Y)
+    K = kernel_frobenius(X, Y)
     assert K.shape == (n_matrices_X, n_matrices_Y)
 
     K1 = np.empty((n_matrices_X, n_matrices_Y))
@@ -112,6 +113,8 @@ def test_riemann_correctness(get_mats):
     tensor = np.tensordot(log_X, log_X.T, axes=1)
     K1 = np.trace(tensor, axis1=1, axis2=2)
     assert_array_almost_equal(K, K1)
+
+
 @pytest.mark.parametrize("feature_map", feature_maps)
 def test_feature_map(feature_map, get_mats):
     n_matrices, n_channels = 5, 3
