@@ -302,53 +302,6 @@ def kernel_laplacian(X, Y=None, *, metric='riemann', gamma=1, reg=0):
     return K
 
 
-def kernel_periodic(X, Y=None, *, metric='riemann', gamma=1, reg=0):
-    """
-    Periodic kernel between two sets of SPD matrices.
-
-    Calculates the periodic kernel matrix :math:`\mathbf{K}` of inner products
-    of two sets :math:`\mathbf{X}` and :math:`\mathbf{Y}` of SPD matrices in
-    :math:`\mathbb{R}^{n \times n}` by calculating pairwise products:
-
-    .. math::
-        \mathbf{K}_{i,j} = \exp(-2 \sin^2(\pi
-        \text{dist}(\mathbf{X}_i, \mathbf{Y}_j) / \gamma))
-
-    Parameters
-    ----------
-    X : ndarray, shape (n_matrices_X, n, n)
-        First set of SPD matrices.
-    Y : None | ndarray, shape (n_matrices_Y, n, n), default=None
-        Second set of SPD matrices. If None, Y is set to X.
-    metric : string or callable, default='riemann'
-        Metric to calculate the pairwise distances. If metric is a string, it
-        must be one of 'euclid', 'harmonic', 'kullback', 'kullback_right',
-        'kullback_sym', 'logdet', 'logeuclid', 'riemann', 'wasserstein'.
-        If metric is a callable, it must take two arguments and return a float.
-    gamma : float, default=1
-        Kernel parameter.
-    reg : float, default=1e-10
-        Regularization parameter to mitigate numerical errors in kernel
-        matrix estimation.
-
-    Returns
-    -------
-    K : ndarray, shape (n_matrices_X, n_matrices_Y)
-        The periodic kernel matrix between X and Y.
-
-    Notes
-    -----
-    .. versionadded:: 0.6
-
-    See Also
-    --------
-    kernel
-    """
-    K = _distance_kernel(_periodic, squared=False)(X, Y, metric=metric,
-                                                   gamma=gamma, reg=reg)
-    return K
-
-
 def kernel_rational_quadratic(X, Y=None, *, metric='riemann', alpha=1, l=1,
                               reg=0):
     """
@@ -1075,7 +1028,6 @@ kernel_types = {
     'determinant': kernel_determinant,
     'gaussian': kernel_gaussian,
     'laplacian': kernel_laplacian,
-    'periodic': kernel_periodic,
     'polynomial': kernel_polynomial,
     'rational_quadratic': kernel_rational_quadratic,
     'exponential': kernel_exponential,
