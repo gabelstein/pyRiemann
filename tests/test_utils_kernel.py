@@ -3,18 +3,15 @@ from numpy.testing import assert_array_equal, assert_array_almost_equal
 import pytest
 
 from pyriemann.utils.base import logm
+from pyriemann.utils.kernel import *
 from pyriemann.utils.kernel import (
-    kernel,
-    kernel_euclid,
-    kernel_logeuclid,
-    kernel_riemann,
-    kernel_frobenius,
-
     _euclid,
     _logeuclid,
-    _riemann,
     _log,
+    _riemann,
+    _det
 )
+
 from pyriemann.utils.mean import mean_covariance
 from pyriemann.utils.test import is_sym_pos_semi_def as is_spsd
 
@@ -125,3 +122,13 @@ def test_feature_map(feature_map, get_mats):
     K = feature_map(X, Cref=np.eye(n_channels))
     assert K.shape == (n_matrices, n_channels, n_channels)
 
+
+def test_distance_kernels(get_mats):
+    """Test distance kernels"""
+    n_matrices, n_channels = 5, 3
+    X = get_mats(n_matrices, n_channels, "spd")
+    K = kernel_gaussian(X, metric='riemann')
+    K1 = kernel(X, metric='logeuclid')
+    K2 = kernel(X, metric='euclid')
+    assert_array_almost_equal(K, K1)
+    assert_array_almost_equal(K, K2)

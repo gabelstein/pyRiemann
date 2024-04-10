@@ -1,4 +1,5 @@
 """Kernels for SPD matrices."""
+from functools import wraps
 
 import numpy as np
 
@@ -203,11 +204,18 @@ def kernel_canonical(X, Y=None, *,
 
 ###############################################################################
 '''Distance Kernels.'''
-# decorator for distance kernels
 
 
+def _distance_kernel(func, squared=False):
+    def wrapper(X, Y=None, *, metric='riemann', reg=1e-10, **kwargs):
+        K = pairwise_distance(X, Y, metric=metric, squared=squared)
+        K = func(K, **kwargs)
+        K = _regularize_kernel(K, reg=reg)
+        return K
+    return wrapper
 
-def kernel_gaussian(X, Y=None, *, metric='riemann', gamma=1, reg=0):
+
+def kernel_gaussian(X, Y=None, *, metric='riemann', reg=0, gamma=1):
     r"""Gaussian kernel between two sets of SPD matrices.
 
     Calculates the Gaussian kernel matrix :math:`\mathbf{K}` of inner products
@@ -245,9 +253,8 @@ def kernel_gaussian(X, Y=None, *, metric='riemann', gamma=1, reg=0):
     --------
     kernel
     """
-    K = pairwise_distance(X, Y, metric=metric, squared=True)
-    K = _exponential(K, gamma=gamma)
-    K = _regularize_kernel(K, reg=reg)
+    K = _distance_kernel(_exponential, squared=True)(X, Y, metric=metric,
+                                                     gamma=-gamma, reg=reg)
     return K
 
 
@@ -289,9 +296,8 @@ def kernel_laplacian(X, Y=None, *, metric='riemann', gamma=1, reg=0):
     --------
     kernel
     """
-    K = pairwise_distance(X, Y, metric=metric)
-    K = _exponential(K, gamma=gamma)
-    K = _regularize_kernel(K, reg=reg)
+    K = _distance_kernel(_exponential, squared=False)(X, Y, metric=metric,
+                                                      gamma=-gamma, reg=reg)
     return K
 
 
@@ -337,13 +343,13 @@ def kernel_periodic(X, Y=None, *, metric='riemann', gamma=1, reg=0):
     --------
     kernel
     """
-    K = pairwise_distance(X, Y, metric=metric)
-    K = _periodic(K, gamma=gamma)
-    K = _regularize_kernel(K, reg=reg)
+    K = _distance_kernel(_periodic, squared=False)(X, Y, metric=metric,
+                                                   gamma=gamma, reg=reg)
     return K
 
 
-def kernel_rational_quadratic(X, Y=None, *, metric='riemann', alpha=1, reg=0):
+def kernel_rational_quadratic(X, Y=None, *, metric='riemann', alpha=1, l=1,
+                              reg=0):
     """
     Rational quadratic kernel between two sets of SPD matrices.
 
@@ -386,14 +392,69 @@ def kernel_rational_quadratic(X, Y=None, *, metric='riemann', alpha=1, reg=0):
     --------
     kernel
     """
-    K = pairwise_distance(X, Y, metric=metric, squared=True)
-    K = _rational_quadratic(K, alpha=alpha)
-    K = _regularize_kernel(K, reg=reg)
+    K = _distance_kernel(_rational_quadratic, squared=True)(X, Y, metric=metric,
+                                                            alpha=alpha,
+                                                            reg=reg,
+                                                            l=l)
+    return K
+
+
+def kernel_multiquadratic(X, Y=None, *,
+                                metric='riemann', beta=1, sigma=1, reg=0):
+    """
+    Multiquadratic kernel between two sets of SPD matrices.
+
+    Calculates the  multiquadratic kernel matrix :math:`\mathbf{K}` of
+    inner products of two sets :math:`\mathbf{X}` and :math:`\mathbf{Y}` of SPD
+    matrices in :math:`\mathbb{R}^{n \times n}` by calculating pairwise
+    products:
+
+    .. math::
+        \mathbf{K}_{i,j} = \left( 1 + \text{dist}(\mathbf{X}_i,
+        \mathbf{Y}_j)^2 \right)^{\beta / 2}
+
+    Parameters
+    ----------
+    X : ndarray, shape (n_matrices_X, n, n)
+        First set of SPD matrices.
+    Y : None | ndarray, shape (n_matrices_Y, n, n), default=None
+        Second set of SPD matrices. If None, Y is set to X.
+    metric : string or callable, default='riemann'
+        Metric to calculate the pairwise distances. If metric is a string, it
+        must be one of 'euclid', 'harmonic', 'kullback', 'kullback_right',
+        'kullback_sym', 'logdet', 'logeuclid', 'riemann', 'wasserstein'.
+        If metric is a callable, it must take two arguments and return a float.
+    beta : float, default=1
+        Kernel parameter.
+    reg : float, default=1e-10
+        Regularization parameter to mitigate numerical errors in kernel
+        matrix estimation.
+
+    Returns
+    -------
+    K : ndarray, shape (n_matrices_X, n_matrices_Y)
+        The inverse multiquadratic kernel matrix between X and Y.
+
+    Notes
+    -----
+    .. versionadded:: 0.6
+
+    See Also
+    --------
+    kernel
+    """
+
+    K = _distance_kernel(_multiquadratic,
+                         squared=True)(X, Y,
+                                       metric=metric,
+                                       beta=beta,
+                                       reg=reg,
+                                       sigma=sigma)
     return K
 
 
 def kernel_inverse_multiquadratic(X, Y=None, *,
-                                  metric='riemann', beta=1, reg=0):
+                                  metric='riemann', beta=1, sigma=1, reg=0):
         """
         Inverse multiquadratic kernel between two sets of SPD matrices.
 
@@ -436,14 +497,28 @@ def kernel_inverse_multiquadratic(X, Y=None, *,
         --------
         kernel
         """
-        K = pairwise_distance(X, Y, metric=metric, squared=True)
-        K = _inverse_multiquadratic(K, beta=beta)
-        K = _regularize_kernel(K, reg=reg)
+        K = _distance_kernel(_inverse_multiquadratic,
+                             squared=True)(X, Y,
+                                           metric=metric,
+                                           beta=beta,
+                                           reg=reg,
+                                           sigma=sigma)
         return K
 
 
 ###############################################################################
 '''Inner Product Kernels'''
+
+
+def _inner_product_kernel(func):
+    def wrapper(X, Y=None, *, Cref=None, reg=1e-10, metric='riemann', **kwargs):
+        feature_map = globals()[f'_{metric}']
+        K = _apply_matrix_kernel(feature_map, X, Y,
+                                 Cref=Cref, reg=0, metric=metric)
+        K = func(K, **kwargs)
+        K = _regularize_kernel(K, reg=reg)
+        return K
+    return wrapper
 
 
 def kernel_polynomial(X, Y=None, *,
@@ -490,11 +565,10 @@ def kernel_polynomial(X, Y=None, *,
     kernel
 
     """
-    feature_map = globals()[f'_{metric}']
-    K = _apply_matrix_kernel(feature_map, X, Y, Cref=Cref, reg=0,
-                             metric=metric)
-    K = _polynomial(K, r=r, s=s)
-    K = _regularize_kernel(K, reg=reg)
+    K = _inner_product_kernel(_polynomial)(X, Y,
+                                           Cref=Cref, reg=reg,
+                                           metric=metric, r=r, s=s)
+
     return K
 
 
@@ -541,11 +615,9 @@ def kernel_exponential(X, Y=None, *,
     kernel
 
     """
-    feature_map = globals()[f'_{metric}']
-    K = _apply_matrix_kernel(feature_map, X, Y, Cref=Cref, reg=reg,
-                          metric=metric)
-    K = _exponential(K, gamma=-gamma)
-    K = _regularize_kernel(K, reg=reg)
+    K = _inner_product_kernel(_exponential)(X, Y,
+                                            Cref=Cref, reg=reg,
+                                            metric=metric, gamma=gamma)
     return K
 
 
@@ -594,11 +666,9 @@ def kernel_sigmoid(X, Y=None, *, Cref=None, reg=10e-10, metric='riemann',
     kernel
 
     """
-    feature_map = globals()[f'_{metric}']
-    K = _apply_matrix_kernel(feature_map, X, Y, Cref=Cref, reg=0,
-                             metric=metric)
-    K = _sigmoid(K, gamma=gamma, r=r)
-    K = _regularize_kernel(K, reg=reg)
+    K = _inner_product_kernel(_sigmoid)(X, Y,
+                                        Cref=Cref, reg=reg,
+                                        metric=metric, gamma=gamma, r=r)
     return K
 
 
@@ -640,11 +710,8 @@ def kernel_frobenius(X, Y=None, *, reg=1e-10, **kwargs):
     --------
     kernel
     """
-    K = _apply_matrix_kernel(_euclid,
-                             X,
-                             Y,
-                             reg=reg,
-                             Cref=np.zeros(X.shape[-2:]))
+    K = _apply_matrix_kernel(_euclid, X, Y,
+                             reg=reg, Cref=np.zeros(X.shape[-2:]))
     return K
 
 def kernel_log(X, Y=None, *, reg=1e-10, **kwargs):
@@ -838,10 +905,15 @@ def _rational_quadratic(K, alpha=1, l=1):
     return (1 + K / (2 * alpha*l**2)) ** (-alpha)
 
 
-def _inverse_multiquadratic(K, beta=1):
+def _multiquadratic(K, beta=1, sigma=1):
     """Inverse multiquadratic function."""
-    K = (1 + K) ** (-beta / 2)
+    K = (sigma**2 + K) ** beta
     return K
+
+
+def _inverse_multiquadratic(K, beta=1, sigma=1):
+    """Inverse multiquadratic function."""
+    return _multiquadratic(K, beta=-beta, sigma=sigma)
 
 
 ###############################################################################
