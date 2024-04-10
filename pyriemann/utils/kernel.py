@@ -7,6 +7,7 @@ from .base import invsqrtm, logm
 from .mean import mean_covariance
 from .distance import pairwise_distance
 from sklearn.base import BaseEstimator, TransformerMixin
+from .utils import check_function
 
 ###############################################################################
 '''Canonical Kernels'''
@@ -986,6 +987,7 @@ def kernel(X, Y=None, *,
         Second set of matrices. If None, Y is set to X.
     Cref : None | ndarray, shape (n, n), default=None
         Reference point for the tangent space and inner product
+
         calculation. Only used if metric='riemann'.
     metric : {'euclid', 'logeuclid', 'riemann'}, default='riemann'
         The type of metric used for tangent space and mean estimation.
