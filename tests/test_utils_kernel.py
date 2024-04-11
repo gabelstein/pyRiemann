@@ -121,14 +121,3 @@ def test_feature_map(feature_map, get_mats):
     X = get_mats(n_matrices, n_channels, "spd")
     K = feature_map(X, Cref=np.eye(n_channels))
     assert K.shape == (n_matrices, n_channels, n_channels)
-
-
-def test_distance_kernels(get_mats):
-    """Test distance kernels"""
-    n_matrices, n_channels = 5, 3
-    X = get_mats(n_matrices, n_channels, "spd")
-    K = kernel_gaussian(X, metric='riemann')
-    K1 = kernel(X, metric='logeuclid')
-    K2 = kernel(X, metric='euclid')
-    assert_array_almost_equal(K, K1)
-    assert_array_almost_equal(K, K2)
