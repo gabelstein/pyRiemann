@@ -668,8 +668,8 @@ def kernel_frobenius(X, Y=None, *, reg=1e-10, **kwargs):
                              reg=reg, Cref=np.zeros(X.shape[-2:]))
     return K
 
-def kernel_log(X, Y=None, *, reg=1e-10, **kwargs):
-    r"""Log-Euclidean kernel between two sets of SPD matrices.
+def kernel_logfrobenius(X, Y=None, *, reg=1e-10, **kwargs):
+    r"""Log-Frobenius kernel between two sets of SPD matrices.
 
     Calculates the Log-Euclidean kernel matrix :math:`\mathbf{K}` of inner
     products of two sets :math:`\mathbf{X}` and :math:`\mathbf{Y}` of SPD
@@ -940,13 +940,16 @@ def kernel(X, Y=None, *,
         Second set of matrices. If None, Y is set to X.
     Cref : None | ndarray, shape (n, n), default=None
         Reference point for the tangent space and inner product
-
-        calculation. Only used if metric='riemann'.
+        calculation. If None, Cref is calculated as the Riemannian mean of X
+        according to the specified metric.
     metric : {'euclid', 'logeuclid', 'riemann'}, default='riemann'
-        The type of metric used for tangent space and mean estimation.
-    ktype : {'canonical', 'determinant', 'gaussian', 'laplacian', 'periodic',
-                'polynomial', 'rational_quadratic'}, default='canonical'
-        The type of kernel to use.
+        The type of metric used for tangent space and mean estimation or
+        pairwise distances.
+    ktype : string | callable, default='canonical'
+        The type of kernel to use. can be: "canonical", "determinant",
+        "gaussian", "laplacian", "polynomial", "rational_quadratic",
+        "exponential", "sigmoid", "log", "row_feature", "inverse_multiquadratic"
+        or a callable function.
     reg : float, default=1e-10
         Regularization parameter to mitigate numerical errors in kernel
         matrix estimation, to provide a positive-definite kernel matrix.
@@ -966,11 +969,8 @@ def kernel(X, Y=None, *,
     kernel_logeuclid
     kernel_riemann
     """
-    msg = f"Kernel type must be in {list(kernel_types.keys())}. Got {ktype}."
 
-    assert ktype in kernel_types.keys(), msg
-
-    kernel_function = kernel_types[ktype]
+    kernel_function = check_function(ktype, kernel_types)
     return kernel_function(X, Y, Cref=Cref, reg=reg, metric=metric, **kwargs)
 
 
@@ -1025,16 +1025,15 @@ class Gram(BaseEstimator, TransformerMixin):
 
 kernel_types = {
     'canonical': kernel_canonical,
-    'determinant': kernel_determinant,
     'gaussian': kernel_gaussian,
     'laplacian': kernel_laplacian,
     'polynomial': kernel_polynomial,
     'rational_quadratic': kernel_rational_quadratic,
     'exponential': kernel_exponential,
     'sigmoid': kernel_sigmoid,
-    'log': kernel_log,
+    'logfrobenius': kernel_logfrobenius,
     'row_feature': kernel_row_feature,
     'inverse_multiquadratic': kernel_inverse_multiquadratic,
-
+    'determinant': kernel_determinant,
 }
 
