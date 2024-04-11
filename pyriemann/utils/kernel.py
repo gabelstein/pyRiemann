@@ -899,7 +899,6 @@ def _apply_matrix_kernel(feature_map, X, Y=None, *,
 
     """Apply a matrix kernel function."""
     _check_dimensions(X, Y, Cref)
-    n_matrices_X, n, n = X.shape
     if Y is None or np.array_equal(X, Y):
         if Cref is None:
             Cref = mean_covariance(X, metric=metric)
