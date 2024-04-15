@@ -3,13 +3,14 @@ from numpy.testing import assert_array_equal, assert_array_almost_equal
 import pytest
 
 from pyriemann.utils.base import logm
+
 from pyriemann.utils.kernel import *
+
 from pyriemann.utils.kernel import (
     _euclid,
     _logeuclid,
     _log,
     _riemann,
-    _det
 )
 
 from pyriemann.utils.mean import mean_covariance
@@ -18,17 +19,18 @@ from pyriemann.utils.test import is_sym_pos_semi_def as is_spsd
 rker_str = ['euclid', 'logeuclid', 'riemann']
 rker_fct = [kernel_euclid, kernel_logeuclid, kernel_riemann]
 feature_maps = [_euclid, _logeuclid, _riemann, _log]
+rker_types = kernel_types.keys()
 
-
-@pytest.mark.parametrize("ker", rker_fct)
-def test_kernel_x_x(ker, get_mats):
+@pytest.mark.parametrize("ker", rker_str)
+@pytest.mark.parametrize("ker_type", rker_types)
+def test_kernel_x_x(ker, ker_type, get_mats):
     """Test kernel build"""
     n_matrices, n_channels = 7, 3
     X = get_mats(n_matrices, n_channels, "spd")
-    K = ker(X, X)
+    K = kernel(X, metric=ker, ktype=ker_type)
     assert K.shape == (n_matrices, n_matrices)
-    assert is_spsd(K)
-    assert_array_almost_equal(K, ker(X))
+    assert_array_almost_equal(K, K.T, decimal=15)
+    assert_array_almost_equal(K, kernel(X, X, metric=ker, ktype=ker_type))
 
 
 @pytest.mark.parametrize("ker", rker_str)
@@ -43,12 +45,13 @@ def test_kernel_cref(ker, get_mats):
 
 
 @pytest.mark.parametrize("ker", rker_str)
-def test_kernel_x_y(ker, get_mats):
+@pytest.mark.parametrize("ker_type", rker_types)
+def test_kernel_x_y(ker, ker_type, get_mats):
     """Test kernel for different X and Y"""
     n_matrices_X, n_matrices_Y, n_channels = 6, 5, 3
     X = get_mats(n_matrices_X, n_channels, "spd")
     Y = get_mats(n_matrices_Y, n_channels, "spd")
-    K = kernel(X, Y, metric=ker)
+    K = kernel(X, Y, metric=ker, ktype=ker_type)
     assert K.shape == (n_matrices_X, n_matrices_Y)
 
 
@@ -59,6 +62,16 @@ def test_metric_string(ker, get_mats):
     X = get_mats(n_matrices, n_channels, "spd")
     K = globals()[f'kernel_{ker}'](X)
     K1 = kernel(X, metric=ker)
+    assert_array_equal(K, K1)
+
+
+@pytest.mark.parametrize("ker", rker_types)
+def test_kernel_type(ker, get_mats):
+    """Test generic kernel function"""
+    n_matrices, n_channels = 5, 3
+    X = get_mats(n_matrices, n_channels, "spd")
+    K = globals()[f'kernel_{ker}'](X, reg=0)
+    K1 = kernel(X, ktype=ker, reg=0)
     assert_array_equal(K, K1)
 
 
