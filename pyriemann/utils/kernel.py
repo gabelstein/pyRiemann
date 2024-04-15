@@ -1,5 +1,4 @@
 """Kernels for SPD matrices."""
-from functools import wraps
 
 import numpy as np
 
@@ -264,15 +263,15 @@ def kernel_gaussian(X, Y=None, *, metric='riemann', reg=0, gamma=1, **kwargs):
 
 
 def kernel_laplacian(X, Y=None, *, metric='riemann', gamma=1, reg=0, **kwargs):
-    """
-    Laplacian kernel between two sets of SPD matrices.
+    r"""Laplacian kernel between two sets of SPD matrices.
 
     Calculates the Laplacian kernel matrix :math:`\mathbf{K}` of inner products
     of two sets :math:`\mathbf{X}` and :math:`\mathbf{Y}` of SPD matrices in
     :math:`\mathbb{R}^{n \times n}` by calculating pairwise products:
 
     .. math::
-        \mathbf{K}_{i,j} = \exp(-\gamma \text{dist}(\mathbf{X}_i, \mathbf{Y}_j))
+        \mathbf{K}_{i,j} = \exp(-\gamma \text{dist}(\mathbf{X}_i,
+        \mathbf{Y}_j))
 
     Parameters
     ----------
@@ -310,8 +309,7 @@ def kernel_laplacian(X, Y=None, *, metric='riemann', gamma=1, reg=0, **kwargs):
 
 def kernel_rational_quadratic(X, Y=None, *,
                               metric='riemann', alpha=1, l=1, reg=0, **kwargs):
-    """
-    Rational quadratic kernel between two sets of SPD matrices.
+    r"""Rational quadratic kernel between two sets of SPD matrices.
 
     Calculates the rational quadratic kernel matrix :math:`\mathbf{K}` of inner
     products of two sets :math:`\mathbf{X}` and :math:`\mathbf{Y}` of SPD
@@ -320,7 +318,7 @@ def kernel_rational_quadratic(X, Y=None, *,
 
     .. math::
         \mathbf{K}_{i,j} = \left( 1 + \frac{\text{dist}(\mathbf{X}_i,
-        \mathbf{Y}_j)^2}{2 \alpha} \right)^{-\alpha}
+        \mathbf{Y}_j)^2}{2 \alpha l^2} \right)^{-\alpha}
 
     Parameters
     ----------
@@ -362,8 +360,7 @@ def kernel_rational_quadratic(X, Y=None, *,
 
 def kernel_multiquadratic(X, Y=None, *,
                           metric='riemann', beta=1, sigma=1, reg=0, **kwargs):
-    """
-    Multiquadratic kernel between two sets of SPD matrices.
+    r"""Multiquadratic kernel between two sets of SPD matrices.
 
     Calculates the  multiquadratic kernel matrix :math:`\mathbf{K}` of
     inner products of two sets :math:`\mathbf{X}` and :math:`\mathbf{Y}` of SPD
@@ -371,8 +368,8 @@ def kernel_multiquadratic(X, Y=None, *,
     products:
 
     .. math::
-        \mathbf{K}_{i,j} = \left( 1 + \text{dist}(\mathbf{X}_i,
-        \mathbf{Y}_j)^2 \right)^{\beta / 2}
+        \mathbf{K}_{i,j} = \left( \sigma + \text{dist}(\mathbf{X}_i,
+        \mathbf{Y}_j)^2 \right)^{\beta}
 
     Parameters
     ----------
@@ -420,55 +417,54 @@ def kernel_inverse_multiquadratic(X, Y=None, *,
                                   sigma=1,
                                   reg=0,
                                   **kwargs):
-        """
-        Inverse multiquadratic kernel between two sets of SPD matrices.
+    r"""Inverse multiquadratic kernel between two sets of SPD matrices.
 
-        Calculates the inverse multiquadratic kernel matrix :math:`\mathbf{K}` of
-        inner products of two sets :math:`\mathbf{X}` and :math:`\mathbf{Y}` of SPD
-        matrices in :math:`\mathbb{R}^{n \times n}` by calculating pairwise
-        products:
+    Calculates the inverse multiquadratic kernel matrix :math:`\mathbf{K}` of
+    inner products of two sets :math:`\mathbf{X}` and :math:`\mathbf{Y}` of SPD
+    matrices in :math:`\mathbb{R}^{n \times n}` by calculating pairwise
+    products:
 
-        .. math::
-            \mathbf{K}_{i,j} = \left( 1 + \text{dist}(\mathbf{X}_i,
-            \mathbf{Y}_j)^2 \right)^{-\beta / 2}
+    .. math::
+        \mathbf{K}_{i,j} = \left( \sigma + \text{dist}(\mathbf{X}_i,
+        \mathbf{Y}_j)^2 \right)^{-\beta}
 
-        Parameters
-        ----------
-        X : ndarray, shape (n_matrices_X, n, n)
-            First set of SPD matrices.
-        Y : None | ndarray, shape (n_matrices_Y, n, n), default=None
-            Second set of SPD matrices. If None, Y is set to X.
-        metric : string or callable, default='riemann'
-            Metric to calculate the pairwise distances. If metric is a string, it
-            must be one of 'euclid', 'harmonic', 'kullback', 'kullback_right',
-            'kullback_sym', 'logdet', 'logeuclid', 'riemann', 'wasserstein'.
-            If metric is a callable, it must take two arguments and return a float.
-        beta : float, default=1
-            Kernel parameter.
-        reg : float, default=1e-10
-            Regularization parameter to mitigate numerical errors in kernel
-            matrix estimation.
+    Parameters
+    ----------
+    X : ndarray, shape (n_matrices_X, n, n)
+        First set of SPD matrices.
+    Y : None | ndarray, shape (n_matrices_Y, n, n), default=None
+        Second set of SPD matrices. If None, Y is set to X.
+    metric : string or callable, default='riemann'
+        Metric to calculate the pairwise distances. If metric is a string, it
+        must be one of 'euclid', 'harmonic', 'kullback', 'kullback_right',
+        'kullback_sym', 'logdet', 'logeuclid', 'riemann', 'wasserstein'.
+        If metric is a callable, it must take two arguments and return a float.
+    beta : float, default=1
+        Kernel parameter.
+    reg : float, default=1e-10
+        Regularization parameter to mitigate numerical errors in kernel
+        matrix estimation.
 
-        Returns
-        -------
-        K : ndarray, shape (n_matrices_X, n_matrices_Y)
-            The inverse multiquadratic kernel matrix between X and Y.
+    Returns
+    -------
+    K : ndarray, shape (n_matrices_X, n_matrices_Y)
+        The inverse multiquadratic kernel matrix between X and Y.
 
-        Notes
-        -----
-        .. versionadded:: 0.6
+    Notes
+    -----
+    .. versionadded:: 0.6
 
-        See Also
-        --------
-        kernel
-        """
-        K = _distance_kernel(_inverse_multiquadratic,
-                             squared=True)(X, Y,
-                                           metric=metric,
-                                           beta=beta,
-                                           reg=reg,
-                                           sigma=sigma)
-        return K
+    See Also
+    --------
+    kernel
+    """
+    K = _distance_kernel(_inverse_multiquadratic,
+                         squared=True)(X, Y,
+                                       metric=metric,
+                                       beta=beta,
+                                       reg=reg,
+                                       sigma=sigma)
+    return K
 
 
 ###############################################################################
@@ -493,14 +489,14 @@ def kernel_polynomial(X, Y=None, *,
                       r=0,
                       s=1,
                       **kwargs):
-    """Polynomial kernel between two sets of SPD matrices.
+    r"""Polynomial kernel between two sets of SPD matrices.
 
     Calculates the polynomial kernel matrix :math:`\mathbf{K}` of inner products
     of two sets :math:`\mathbf{X}` and :math:`\mathbf{Y}` of SPD matrices in
     :math:`\mathbb{R}^{n \times n}` by calculating pairwise products:
 
     .. math::
-        \mathbf{K}_{i,j} = (\text{tr}(\mathbf{X}_i^T \mathbf{Y}_j) + r)^s
+        \mathbf{K}_{i,j} = (<\mathbf{X}_i, \mathbf{Y}_j>_* + r)^s
 
     Parameters
     ----------
@@ -544,7 +540,7 @@ def kernel_polynomial(X, Y=None, *,
 
 def kernel_exponential(X, Y=None, *,
                        Cref=None, reg=0, metric='riemann', gamma=1, **kwargs):
-    """Exponential kernel between two sets of SPD matrices.
+    r"""Exponential kernel between two sets of SPD matrices.
 
     Calculates the exponential kernel matrix :math:`\mathbf{K}` of inner
     products of two sets :math:`\mathbf{X}` and :math:`\mathbf{Y}` of SPD
@@ -552,7 +548,7 @@ def kernel_exponential(X, Y=None, *,
     products:
 
     .. math::
-      \mathbf{K}_{i,j} = \exp(-\gamma \text{tr}(\mathbf{X}_i^T \mathbf{Y}_j))
+      \mathbf{K}_{i,j} = \exp(\gamma <\mathbf{X}_i, \mathbf{Y}_j>_*)
 
     Parameters
     ----------
@@ -594,15 +590,14 @@ def kernel_exponential(X, Y=None, *,
 def kernel_sigmoid(X, Y=None, *,
                    Cref=None, reg=10e-10, metric='riemann', gamma=1, r=0,
                    **kwargs):
-    """Sigmoid kernel between two sets of SPD matrices.
+    r"""Sigmoid kernel between two sets of SPD matrices.
 
     Calculates the sigmoid kernel matrix :math:`\mathbf{K}` of inner products
     of two sets :math:`\mathbf{X}` and :math:`\mathbf{Y}` of SPD matrices in
     :math:`\mathbb{R}^{n \times n}` by calculating pairwise products:
 
     .. math::
-         \mathbf{K}_{i,j} = \tanh(\gamma \text{tr}(\mathbf{X}_i^T \mathbf{Y}_j)
-         + r)
+         \mathbf{K}_{i,j} = \tanh(\gamma <\mathbf{X}_i, \mathbf{Y}_j>_*) + r)
 
     Parameters
     ----------
@@ -968,8 +963,7 @@ def kernel(X, Y=None, *,
 
 
 class Gram(BaseEstimator, TransformerMixin):
-    """
-    Gram matrix transformer.
+    """Gram matrix transformer.
 
     Parameters
     ----------
@@ -979,6 +973,8 @@ class Gram(BaseEstimator, TransformerMixin):
     kernel_fct : callable
         The kernel to use to compute the gram matrix. See
         :func:`pyriemann.utils.kernel.kernel` for available options.
+    kernel_params : dict
+        Parameters to pass to the kernel function.
 
     Attributes
     ----------
@@ -994,17 +990,22 @@ class Gram(BaseEstimator, TransformerMixin):
 
     """
 
-    def __init__(self, metric, kernel_fct):
+    def __init__(self, metric, kernel_fct, kernel_params=None):
         self.metric = metric
         self.kernel_fct = kernel_fct
+        self.kernel_params = kernel_params
 
     def fit(self, X, y=None):
         self.data_ = X
         self.Cref = mean_covariance(X, metric=self.metric)
+        if self.kernel_params is None:
+            self.kernel_params = {}
         return self
 
     def transform(self, X, y=None):
-        gram = self.kernel_fct(X, self.data_, Cref=self.Cref)
+        gram = self.kernel_fct(X, self.data_,
+                               Cref=self.Cref,
+                               **self.kernel_params)
         return gram
 
 
