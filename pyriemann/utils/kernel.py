@@ -491,6 +491,7 @@ def kernel_polynomial(X, Y=None, *,
                       metric='riemann',
                       r=0,
                       s=1,
+                      gamma=1,
                       **kwargs):
     r"""Polynomial kernel between two sets of SPD matrices.
 
@@ -520,6 +521,8 @@ def kernel_polynomial(X, Y=None, *,
         Kernel parameter.
     s : float, default=1
         Kernel parameter.
+    gamma : float, default=1
+        Kernel parameter.
 
     Returns
     -------
@@ -536,8 +539,8 @@ def kernel_polynomial(X, Y=None, *,
 
     """
     K = _inner_product_kernel(_polynomial)(X, Y,
-                                           Cref=Cref, reg=reg,
-                                           metric=metric, r=r, s=s)
+                                           Cref=Cref, reg=reg, metric=metric,
+                                           r=r, s=s, gamma=gamma)
 
     return K
 
@@ -828,16 +831,16 @@ _feature_maps = {
     'logeuclid': _logeuclid,
     'riemann': _riemann,
     'euclid': _euclid,
-    'det': _det
+    'det': _det,
 }
 
 ###############################################################################
 '''Kernel functions.'''
 
 
-def _polynomial(K, r=1, s=2):
+def _polynomial(K, r=1, s=2, gamma=1):
     """Polynomial function."""
-    return (K + r) ** s
+    return (gamma*K + r) ** s
 
 
 def _exponential(K, gamma=1):

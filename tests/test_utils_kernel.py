@@ -1,12 +1,37 @@
 import numpy as np
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 import pytest
+from sklearn.gaussian_process.kernels import RationalQuadratic
 
-from pyriemann.utils.base import logm
+from sklearn.metrics.pairwise import (laplacian_kernel,
+                                      sigmoid_kernel,
+                                      polynomial_kernel,
+                                      rbf_kernel,
+                                      )
 
-from pyriemann.utils.kernel import *
-#dictionary of metrics
+from pyriemann.utils.kernel import (
+    kernel,
+    kernel_euclid,
+    kernel_logeuclid,
+    kernel_riemann,
+    kernel_frobenius,
+    kernel_gaussian,
+    kernel_laplacian,
+    kernel_sigmoid,
+    kernel_polynomial,
+    kernel_rational_quadratic,
+    Gram,
+    kernel_types,
+    kernel_canonical,
+    kernel_exponential,
+    kernel_inverse_multiquadratic,
+    kernel_multiquadratic,
+    kernel_stein,
+    kernel_logfrobenius
+)
+
 from pyriemann.utils.distance import distance_functions
+from pyriemann.utils.base import logm
 
 from pyriemann.utils.kernel import (
     _euclid,
@@ -16,7 +41,6 @@ from pyriemann.utils.kernel import (
 )
 
 from pyriemann.utils.mean import mean_covariance
-from pyriemann.utils.test import is_sym_pos_semi_def as is_spsd
 
 rker_str = ['euclid', 'logeuclid', 'riemann']
 rker_fct = [kernel_euclid, kernel_logeuclid, kernel_riemann]
@@ -29,6 +53,7 @@ distance_kernels = ['gaussian',
                     'rational_quadratic',
                     'inverse_multiquadratic',
                     'multiquadratic']
+
 
 @pytest.mark.parametrize("ker", rker_str)
 @pytest.mark.parametrize("ker_type", rker_types)
@@ -79,7 +104,7 @@ def test_kernel_type(ker, get_mats):
     """Test generic kernel function"""
     n_matrices, n_channels = 5, 3
     X = get_mats(n_matrices, n_channels, "spd")
-    K = globals()[f'kernel_{ker}'](X, reg=0)
+    K = kernel_types[ker](X, reg=0)
     K1 = kernel(X, ktype=ker, reg=0)
     assert_array_equal(K, K1)
 
@@ -167,3 +192,51 @@ def test_gram_matrix_kernel_params(ker_type, get_mats):
     X_ = K.fit_transform(X)
     assert X_.shape == (n_matrices, n_matrices)
     assert_array_almost_equal(X_, X_.T)
+
+
+def test_gaussian_kernel_correctness(get_mats):
+    """Test gaussian kernel correctness"""
+    n_matrices, n_channels = 5, 3
+    X = get_mats(n_matrices, n_channels, "spd")
+    K = kernel_gaussian(X, gamma=0.5, metric='euclid')
+    K1 = rbf_kernel(X.reshape(n_matrices, -1), gamma=0.5)
+    assert_array_almost_equal(K, K1)
+
+
+def test_rq_kernel_correctness(get_mats):
+    """Test rational quadratic kernel correctness"""
+    n_matrices, n_channels = 5, 3
+    X = get_mats(n_matrices, n_channels, "spd")
+    K = kernel_rational_quadratic(X, alpha=2, s=0.5, metric='euclid')
+    K1 = RationalQuadratic(0.5, 2)(X.reshape(n_matrices, -1))
+    assert_array_almost_equal(K, K1)
+
+
+def test_laplacian_kernel_correctness(get_mats):
+    """Test laplacian kernel correctness"""
+    n_matrices, n_channels = 5, 3
+    X = get_mats(n_matrices, n_channels, "spd")
+    K = kernel_laplacian(X, gamma=0.5, metric='euclid')
+    K1 = laplacian_kernel(X.reshape(n_matrices, -1), gamma=0.5)
+    assert_array_almost_equal(K, K1)
+
+
+def test_sigmoid_kernel_correctness(get_mats):
+    """Test sigmoid kernel correctness"""
+    n_matrices, n_channels = 5, 3
+    X = get_mats(n_matrices, n_channels, "spd")
+    K = kernel_sigmoid(X, gamma=0.5, r=1, metric='euclid',
+                       Cref=np.zeros((n_channels, n_channels)))
+    K1 = sigmoid_kernel(X.reshape(n_matrices, -1), gamma=0.5)
+    assert_array_almost_equal(K, K1)
+
+
+def test_polynomial_kernel_correctness(get_mats):
+    """Test polynomial kernel correctness"""
+    n_matrices, n_channels = 5, 3
+    X = get_mats(n_matrices, n_channels, "spd")
+    K = kernel_polynomial(X, r=1, s=2, gamma=0.5, metric='euclid',
+                          Cref=np.zeros((n_channels, n_channels)))
+    K1 = polynomial_kernel(X.reshape(n_matrices, -1), coef0=1, degree=2,
+                           gamma=.5)
+    assert_array_almost_equal(K, K1)
