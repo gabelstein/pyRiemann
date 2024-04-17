@@ -308,7 +308,8 @@ def kernel_laplacian(X, Y=None, *, metric='riemann', gamma=1, reg=0, **kwargs):
 
 
 def kernel_rational_quadratic(X, Y=None, *,
-                              metric='riemann', alpha=1, s=1, reg=0, **kwargs):
+                              metric='riemann', alpha=1, gamma=1, reg=0,
+                              **kwargs):
     r"""Rational quadratic kernel between two sets of SPD matrices.
 
     Calculates the rational quadratic kernel matrix :math:`\mathbf{K}` of inner
@@ -356,7 +357,7 @@ def kernel_rational_quadratic(X, Y=None, *,
                                                             metric=metric,
                                                             alpha=alpha,
                                                             reg=reg,
-                                                            s=s)
+                                                            gamma=gamma)
     return K
 
 
@@ -853,14 +854,14 @@ def _sigmoid(K, gamma=1, r=0):
     return np.tanh(gamma * K + r)
 
 
-def _rational_quadratic(K, alpha=1, s=1):
+def _rational_quadratic(K, alpha=1, gamma=1):
     """Rational quadratic function."""
-    return (1 + K / (2 * alpha*s**2)) ** (-alpha)
+    return (1 + K * gamma / alpha) ** (-alpha)
 
 
 def _multiquadratic(K, beta=1, sigma=1):
     """Inverse multiquadratic function."""
-    K = (sigma**2 + K) ** beta
+    K = (sigma + K) ** beta
     return K
 
 
