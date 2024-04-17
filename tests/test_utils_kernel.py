@@ -5,6 +5,8 @@ import pytest
 from pyriemann.utils.base import logm
 
 from pyriemann.utils.kernel import *
+#dictionary of metrics
+from pyriemann.utils.distance import distance_functions
 
 from pyriemann.utils.kernel import (
     _euclid,
@@ -20,6 +22,13 @@ rker_str = ['euclid', 'logeuclid', 'riemann']
 rker_fct = [kernel_euclid, kernel_logeuclid, kernel_riemann]
 feature_maps = [_euclid, _logeuclid, _riemann, _log]
 rker_types = kernel_types.keys()
+metrics = distance_functions.keys()
+distance_kernels = ['gaussian',
+                    'laplacian',
+                    'sigmoid',
+                    'rational_quadratic',
+                    'inverse_multiquadratic',
+                    'multiquadratic']
 
 @pytest.mark.parametrize("ker", rker_str)
 @pytest.mark.parametrize("ker_type", rker_types)
@@ -134,3 +143,27 @@ def test_feature_map(feature_map, get_mats):
     X = get_mats(n_matrices, n_channels, "spd")
     K = feature_map(X, Cref=np.eye(n_channels))
     assert K.shape == (n_matrices, n_channels, n_channels)
+
+
+@pytest.mark.parametrize("ker_type", distance_kernels)
+@pytest.mark.parametrize("metric", metrics)
+def test_gram_matrix(ker_type, metric, get_mats):
+    """Test gram matrix"""
+    n_matrices, n_channels = 5, 3
+    X = get_mats(n_matrices, n_channels, "spd")
+    K = Gram(metric=metric, kernel_fct=kernel_types[ker_type])
+    X_ = K.fit_transform(X)
+    assert X_.shape == (n_matrices, n_matrices)
+    assert_array_almost_equal(X_, X_.T)
+
+
+@pytest.mark.parametrize("ker_type", distance_kernels)
+def test_gram_matrix_kernel_params(ker_type, get_mats):
+    """Test gram matrix"""
+    n_matrices, n_channels = 5, 3
+    X = get_mats(n_matrices, n_channels, "spd")
+    K = Gram(metric='logeuclid', kernel_fct=kernel_types[ker_type],
+             kernel_params={'reg': 0.1, 'l': 0.1, 'sigma': 0.1})
+    X_ = K.fit_transform(X)
+    assert X_.shape == (n_matrices, n_matrices)
+    assert_array_almost_equal(X_, X_.T)

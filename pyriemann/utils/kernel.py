@@ -3,7 +3,7 @@
 import numpy as np
 
 from .base import invsqrtm, logm
-from .mean import mean_covariance
+from .mean import mean_covariance, mean_functions
 from .distance import pairwise_distance
 from sklearn.base import BaseEstimator, TransformerMixin
 from .utils import check_function
@@ -166,7 +166,7 @@ def kernel_canonical(X, Y=None, *,
         metric : {'euclid', 'logeuclid', 'riemann'}, default='riemann'
             The metric used for kernel estimation.
         Cref : None | ndarray, shape (n, n), default=None
-            Reference point for the tangent space and inner product calculation.
+            Reference point for tangent space and inner product calculation.
             If None, Cref is calculated as the geometric mean of X according to
             the metric.
         reg : float, default=1e-10
@@ -308,7 +308,7 @@ def kernel_laplacian(X, Y=None, *, metric='riemann', gamma=1, reg=0, **kwargs):
 
 
 def kernel_rational_quadratic(X, Y=None, *,
-                              metric='riemann', alpha=1, l=1, reg=0, **kwargs):
+                              metric='riemann', alpha=1, s=1, reg=0, **kwargs):
     r"""Rational quadratic kernel between two sets of SPD matrices.
 
     Calculates the rational quadratic kernel matrix :math:`\mathbf{K}` of inner
@@ -336,6 +336,8 @@ def kernel_rational_quadratic(X, Y=None, *,
     reg : float, default=1e-10
         Regularization parameter to mitigate numerical errors in kernel
         matrix estimation.
+    s : float, default=1
+        Kernel parameter.
 
     Returns
     -------
@@ -354,7 +356,7 @@ def kernel_rational_quadratic(X, Y=None, *,
                                                             metric=metric,
                                                             alpha=alpha,
                                                             reg=reg,
-                                                            l=l)
+                                                            s=s)
     return K
 
 
@@ -472,7 +474,8 @@ def kernel_inverse_multiquadratic(X, Y=None, *,
 
 
 def _inner_product_kernel(func):
-    def wrapper(X, Y=None, *, Cref=None, reg=1e-10, metric='riemann', **kwargs):
+    def wrapper(X, Y=None, *,
+                Cref=None, reg=1e-10, metric='riemann', **kwargs):
         feature_map = check_function(metric, _feature_maps)
         K = _apply_matrix_kernel(feature_map, X, Y,
                                  Cref=Cref, reg=0, metric=metric)
@@ -491,9 +494,10 @@ def kernel_polynomial(X, Y=None, *,
                       **kwargs):
     r"""Polynomial kernel between two sets of SPD matrices.
 
-    Calculates the polynomial kernel matrix :math:`\mathbf{K}` of inner products
-    of two sets :math:`\mathbf{X}` and :math:`\mathbf{Y}` of SPD matrices in
-    :math:`\mathbb{R}^{n \times n}` by calculating pairwise products:
+    Calculates the polynomial kernel matrix :math:`\mathbf{K}` of inner
+    products of two sets :math:`\mathbf{X}` and :math:`\mathbf{Y}` of SPD
+    matrices in :math:`\mathbb{R}^{n \times n}` by calculating pairwise
+    products:
 
     .. math::
         \mathbf{K}_{i,j} = (<\mathbf{X}_i, \mathbf{Y}_j>_* + r)^s
@@ -680,6 +684,7 @@ def kernel_frobenius(X, Y=None, *, reg=1e-10, **kwargs):
                              reg=reg, Cref=np.zeros(X.shape[-2:]))
     return K
 
+
 def kernel_logfrobenius(X, Y=None, *, reg=1e-10, **kwargs):
     r"""Log-Frobenius kernel between two sets of SPD matrices.
 
@@ -768,8 +773,8 @@ def kernel_stein(X, Y=None, *, reg=1e-10, beta=1, c=1, **kwargs):
 
     References
     ----------
-    .. [1] `Sparse coding and dictionary learning for symmetric positive definite
-        matrices: A kernel approach
+    .. [1] `Sparse coding and dictionary learning for symmetric positive
+        definite matrices: A kernel approach
         <https://link.springer.com/chapter/10.1007/978-3-642-33709-3_16>`_
         M. T. Harandi, C. Sanderson, R. Hartley, and B. C. Lovell, ECCV, 2012,
         pp. 216–229
@@ -781,7 +786,7 @@ def kernel_stein(X, Y=None, *, reg=1e-10, beta=1, c=1, **kwargs):
     else:
         X_, Y_ = _det(X), _det(Y)
 
-    frac = np.sqrt((X_[:, None]* Y_) ** beta ) / (X_[:, None] + Y_)**beta
+    frac = np.sqrt((X_[:, None] * Y_) ** beta) / (X_[:, None] + Y_)**beta
     K = 2**(c*beta) * frac
     K = _regularize_kernel(K, reg=reg)
     return K
@@ -845,9 +850,9 @@ def _sigmoid(K, gamma=1, r=0):
     return np.tanh(gamma * K + r)
 
 
-def _rational_quadratic(K, alpha=1, l=1):
+def _rational_quadratic(K, alpha=1, s=1):
     """Rational quadratic function."""
-    return (1 + K / (2 * alpha*l**2)) ** (-alpha)
+    return (1 + K / (2 * alpha*s**2)) ** (-alpha)
 
 
 def _multiquadratic(K, beta=1, sigma=1):
@@ -909,16 +914,25 @@ def _apply_matrix_kernel(feature_map, X, Y=None, *,
     return K
 
 
+kernel_functions = {
+    "euclid": kernel_euclid,
+    "logeuclid": kernel_logeuclid,
+    "riemann": kernel_riemann,
+}
+
+
 def kernel(X, Y=None, *,
            Cref=None,
            metric='riemann',
            ktype='canonical',
            reg=1e-10,
            **kwargs):
-    """Kernel matrix between matrices according to a specified metric.
+    """Kernel matrix between two sets of matrices.
 
-    Calculates the kernel matrix K of inner products of two sets X and Y of
-    matrices on the tangent space at Cref according to a specified metric.
+    Calculates the kernel matrix K of two sets X and Y of matrices.
+    The kernel function is specified by the user and can be any of the
+    available kernel functions in :mod:`pyriemann.utils.kernel` or a custom
+    function.
 
     Parameters
     ----------
@@ -930,14 +944,18 @@ def kernel(X, Y=None, *,
         Reference point for the tangent space and inner product
         calculation. If None, Cref is calculated as the Riemannian mean of X
         according to the specified metric.
-    metric : {'euclid', 'logeuclid', 'riemann'}, default='riemann'
+    metric : string, default='riemann'
         The type of metric used for tangent space and mean estimation or
-        pairwise distances.
+        pairwise distances. If metric is a string, it must be one of 'euclid',
+        'harmonic', 'kullback', 'kullback_right', 'kullback_sym', 'logdet',
+        'logeuclid', 'riemann', 'wasserstein'.
     ktype : string | callable, default='canonical'
         The type of kernel to use. can be: "canonical", "determinant",
         "gaussian", "laplacian", "polynomial", "rational_quadratic",
-        "exponential", "sigmoid", "log", "row_feature", "inverse_multiquadratic"
-        or a callable function.
+        "exponential", "sigmoid", "log", "row_feature",
+        "inverse_multiquadratic", "stein", "multiquadratic" or a callable
+        function. If a callable function is provided, it must take the
+        arguments X, Y, Cref, reg and metric and return a kernel matrix.
     reg : float, default=1e-10
         Regularization parameter to mitigate numerical errors in kernel
         matrix estimation, to provide a positive-definite kernel matrix.
@@ -963,7 +981,18 @@ def kernel(X, Y=None, *,
 
 
 class Gram(BaseEstimator, TransformerMixin):
-    """Gram matrix transformer.
+    r"""Gram matrix transformer for kernel functions.
+
+    This transformer computes the Gram matrix between two sets of SPD matrices
+    using a kernel function. The kernel function is used to compute the inner
+    product between the matrices in the two sets. The kernel function is
+    specified by the user and can be any of the available kernel functions in
+    :mod:`pyriemann.utils.kernel` or a custom function.
+    The Gram matrix of a kernel function ``k`` between two sets of SPD matrices
+    X and Y is defined as:
+
+    .. math::
+        \mathbf{K}_{i,j} = \text{k}(\mathbf{X}_i, \mathbf{Y}_j)
 
     Parameters
     ----------
@@ -985,19 +1014,20 @@ class Gram(BaseEstimator, TransformerMixin):
 
     See Also
     --------
-    pyriemann.utils.mean.mean_covariance
     pyriemann.utils.kernel.kernel
 
     """
 
-    def __init__(self, metric, kernel_fct, kernel_params=None):
+    def __init__(self, metric, kernel_fct, kernel_params=None, Cref=None):
         self.metric = metric
         self.kernel_fct = kernel_fct
         self.kernel_params = kernel_params
+        self.Cref = Cref
 
     def fit(self, X, y=None):
         self.data_ = X
-        self.Cref = mean_covariance(X, metric=self.metric)
+        if self.Cref is None and self.metric in mean_functions.keys():
+            self.Cref = mean_covariance(X, metric=self.metric)
         if self.kernel_params is None:
             self.kernel_params = {}
         return self
@@ -1022,4 +1052,3 @@ kernel_types = {
     'stein': kernel_stein,
     'multiquadratic': kernel_multiquadratic
 }
-
