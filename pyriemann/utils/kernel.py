@@ -163,8 +163,11 @@ def kernel_canonical(X, Y=None, *,
             First set of SPD matrices.
         Y : None | ndarray, shape (n_matrices_Y, n, n), default=None
             Second set of SPD matrices. If None, Y is set to X.
-        metric : {'euclid', 'logeuclid', 'riemann'}, default='riemann'
-            The metric used for kernel estimation.
+        metric : string | callable, default='riemann'
+            The metric used for kernel estimation. If a string is passed, it
+            must be one of 'euclid', 'logeuclid', 'riemann'.
+            If metric is provided, it must take arguments X, Y, Cref and reg
+            and return a float.
         Cref : None | ndarray, shape (n, n), default=None
             Reference point for tangent space and inner product calculation.
             If None, Cref is calculated as the geometric mean of X according to
@@ -954,12 +957,12 @@ def kernel(X, Y=None, *,
         'harmonic', 'kullback', 'kullback_right', 'kullback_sym', 'logdet',
         'logeuclid', 'riemann', 'wasserstein'.
     ktype : string | callable, default='canonical'
-        The type of kernel to use. can be: "canonical", "determinant",
-        "gaussian", "laplacian", "polynomial", "rational_quadratic",
-        "exponential", "sigmoid", "log", "row_feature",
-        "inverse_multiquadratic", "stein", "multiquadratic" or a callable
-        function. If a callable function is provided, it must take the
-        arguments X, Y, Cref, reg and metric and return a kernel matrix.
+        The type of kernel to use. If a string is passed, it can be:
+        "canonical", "determinant", "gaussian", "laplacian", "polynomial",
+        "rational_quadratic", "exponential", "sigmoid", "log", "row_feature",
+        "inverse_multiquadratic", "stein", "multiquadratic".
+        If a callable function is provided, it must take the arguments X, Y,
+        Cref, reg and metric and return a kernel matrix.
     reg : float, default=1e-10
         Regularization parameter to mitigate numerical errors in kernel
         matrix estimation, to provide a positive-definite kernel matrix.
