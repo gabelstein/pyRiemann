@@ -51,7 +51,7 @@ Classification
 
     MDM
     FgMDM
-    TSclassifier
+    TSClassifier
     KNearestNeighbor
     SVC
     MeanField
@@ -157,7 +157,7 @@ Transfer Learning
     TLRegressor
     TLDummy
     TLCenter
-    TLStretch
+    TLScale
     TLRotate
     MDWM
 
@@ -186,7 +186,6 @@ Datasets
     make_matrices
     make_masks
     sample_gaussian_spd
-    generate_random_spd_matrix
     make_classification_transfer
 
 Utils function
@@ -288,6 +287,7 @@ Geodesics
     geodesic_logchol
     geodesic_logeuclid
     geodesic_riemann
+    geodesic_wasserstein
 
 Kernels
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -314,10 +314,12 @@ Tangent Space
     exp_map_logchol
     exp_map_logeuclid
     exp_map_riemann
+    exp_map_wasserstein
     log_map_euclid
     log_map_logchol
     log_map_logeuclid
     log_map_riemann
+    log_map_wasserstein
     upper
     unupper
     tangent_space
@@ -337,6 +339,8 @@ Base
     powm
     sqrtm
     nearest_sym_pos_def
+    ddexpm
+    ddlogm
 
 Aproximate Joint Diagonalization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

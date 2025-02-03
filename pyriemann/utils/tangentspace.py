@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from .base import sqrtm, invsqrtm, logm, expm
+from .base import expm, invsqrtm, logm, sqrtm, ddexpm, ddlogm
 from .mean import mean_covariance
 from .utils import check_function
 
@@ -99,11 +99,17 @@ def exp_map_logeuclid(X, Cref):
 
     The projection of a matrix :math:`\mathbf{X}` from tangent space
     to SPD/HPD manifold with log-Euclidean exponential map
-    according to a reference SPD/HPD matrix :math:`\mathbf{C}_\text{ref}` is:
+    according to a reference SPD/HPD matrix :math:`\mathbf{C}_\text{ref}` as
+    described in Eq.(3.4) of [1]_:
 
     .. math::
-        \mathbf{X}_\text{original} =
-        \exp(\mathbf{X} + \log(\mathbf{C}_\text{ref}))
+        \mathbf{X}_\text{original} = \exp \left( \log(\mathbf{C}_\text{ref})
+        + [D_{\mathbf{C}_\text{ref}} \log] \left(\mathbf{X}\right) \right)
+
+    where :math:`[D_{\mathbf{C}_\text{ref}} \log] \left( \mathbf{X}\right)`
+    indicates the differential of the matrix logarithm at point
+    :math:`\mathbf{C}_\text{ref}` applied to :math:`\mathbf{X}`.
+    Calculation is performed according to Eq. (5) in [2]_.
 
     Parameters
     ----------
@@ -120,8 +126,20 @@ def exp_map_logeuclid(X, Cref):
     Notes
     -----
     .. versionadded:: 0.4
+
+    References
+    ----------
+    .. [1] `Geometric Means in a Novel Vector Space Structure on Symmetric
+        Positive‐Definite Matrices
+        <https://epubs.siam.org/doi/10.1137/050637996>`_
+        V. Arsigny, P. Fillard, X. Pennec, N. Ayache. SIMAX, 2006, 29(1),
+        pp. 328-347.
+    .. [2] `A New Canonical Log-Euclidean Kernel for Symmetric Positive
+        Definite Matrices for EEG Analysis
+        <https://ieeexplore.ieee.org/document/10735221>`_
+        G. Wagner vom Berg, V. Röhr, D. Platt, B. Blankertz. IEEE TBME, 2024.
     """
-    return expm(X + logm(Cref))
+    return expm(logm(Cref) + ddlogm(X, Cref))
 
 
 def exp_map_riemann(X, Cref, Cm12=False):
@@ -135,7 +153,8 @@ def exp_map_riemann(X, Cref, Cm12=False):
         \mathbf{X}_\text{original} = \mathbf{C}_\text{ref}^{1/2}
         \exp(\mathbf{X}) \mathbf{C}_\text{ref}^{1/2}
 
-    When Cm12=True, it returns the full Riemannian exponential map:
+    When Cm12=True, it returns the full Riemannian exponential map as in
+    Section 3.4 of [1]_:
 
     .. math::
         \mathbf{X}_\text{original} = \mathbf{C}_\text{ref}^{1/2}
@@ -159,12 +178,61 @@ def exp_map_riemann(X, Cref, Cm12=False):
     Notes
     -----
     .. versionadded:: 0.4
+
+    References
+    ----------
+    .. [1] `A Riemannian Framework for Tensor Computing
+        <https://link.springer.com/article/10.1007/s11263-005-3222-z>`_
+        X. Pennec, P. Fillard, N. Ayache. IJCV, 2006, 66(1), pp. 41-66.
     """
     if Cm12:
         Cm12 = invsqrtm(Cref)
         X = Cm12 @ X @ Cm12
     C12 = sqrtm(Cref)
     return C12 @ expm(X) @ C12
+
+
+def exp_map_wasserstein(X, Cref):
+    r"""Project matrices back to manifold by Wasserstein exponential map.
+
+    The projection of a matrix :math:`\mathbf{X}` from tangent space
+    to SPD/HPD manifold with Wasserstein exponential map according to a
+    reference SPD/HPD matrix :math:`\mathbf{C}_\text{ref}` is given in
+    Eq.(36) of [1]_.
+
+    Parameters
+    ----------
+    X : ndarray, shape (..., n, n)
+        Matrices in tangent space.
+    Cref : ndarray, shape (n, n)
+        Reference SPD/HPD matrix.
+
+    Returns
+    -------
+    X_original : ndarray, shape (..., n, n)
+        Matrices in SPD/HPD manifold.
+
+    Notes
+    -----
+    .. versionadded:: 0.8
+
+    References
+    ----------
+    .. [1] `Wasserstein Riemannian geometry of Gaussian densities
+        <https://link.springer.com/article/10.1007/s41884-018-0014-4>`_
+        L. Malagò, L. Montrucchio, G. Pistone. Information Geometry, 2018, 1,
+        pp. 137–179.
+    """
+
+    d, V = np.linalg.eigh(Cref)
+    C = 1 / (d[:, None] + d[None, :])
+
+    X_rotated = V.conj().T @ X @ V
+    X_tmp = C * X_rotated
+    X_tmp = X_tmp @ np.diag(d) @ X_tmp
+    X_tmp = V @ X_tmp @ V.conj().T
+
+    return Cref + X + X_tmp
 
 
 def log_map_euclid(X, Cref):
@@ -247,11 +315,18 @@ def log_map_logeuclid(X, Cref):
     r"""Project matrices in tangent space by log-Euclidean logarithmic map.
 
     The projection of a matrix :math:`\mathbf{X}` from SPD/HPD manifold
-    to tangent space by log-Euclidean logarithmic map
-    according to a SPD/HPD reference matrix :math:`\mathbf{C}_\text{ref}` is:
+    to tangent space by log-Euclidean logarithmic map according to a SPD/HPD
+    reference matrix :math:`\mathbf{C}_\text{ref}` as described in Eq.(3.4)
+    of [1]_:
 
     .. math::
-        \mathbf{X}_\text{new} = \log(\mathbf{X}) - \log(\mathbf{C}_\text{ref})
+        \mathbf{X}_\text{new} = [D_{\log(\mathbf{C}_\text{ref})} \exp] \left(
+        \log(\mathbf{X}) - \log(\mathbf{C}_\text{ref}) \right)
+
+    where :math:`[D_{\log(\mathbf{C}_\text{ref})} \exp]\left(\mathbf{X}\right)`
+    indicates the differential of the matrix exponential at point
+    :math:`\log(\mathbf{C}_\text{ref})` applied to :math:`\mathbf{X}`.
+    Calculation is performed according to Eq. (7) in [2]_.
 
     Parameters
     ----------
@@ -268,9 +343,22 @@ def log_map_logeuclid(X, Cref):
     Notes
     -----
     .. versionadded:: 0.4
+
+    References
+    ----------
+    .. [1] `Geometric Means in a Novel Vector Space Structure on Symmetric
+        Positive‐Definite Matrices
+        <https://epubs.siam.org/doi/10.1137/050637996>`_
+        V. Arsigny, P. Fillard, X. Pennec, N. Ayache. SIMAX, 2006, 29(1),
+        pp. 328-347.
+    .. [2] `A New Canonical Log-Euclidean Kernel for Symmetric Positive
+        Definite Matrices for EEG Analysis
+        <https://ieeexplore.ieee.org/document/10735221>`_
+        G. Wagner vom Berg, V. Röhr, D. Platt, B. Blankertz. IEEE TBME, 2024.
     """
     _check_dimensions(X, Cref)
-    return logm(X) - logm(Cref)
+    logCref = logm(Cref)
+    return ddexpm(logm(X) - logCref, logCref)
 
 
 def log_map_riemann(X, Cref, C12=False):
@@ -284,7 +372,8 @@ def log_map_riemann(X, Cref, C12=False):
         \mathbf{X}_\text{new} = \log ( \mathbf{C}_\text{ref}^{-1/2}
         \mathbf{X} \mathbf{C}_\text{ref}^{-1/2})
 
-    When C12=True, it returns the full Riemannian logarithmic map:
+    When C12=True, it returns the full Riemannian logarithmic map as in
+    Section 3.4 of [1]_:
 
     .. math::
         \mathbf{X}_\text{new} = \mathbf{C}_\text{ref}^{1/2}
@@ -308,6 +397,12 @@ def log_map_riemann(X, Cref, C12=False):
     Notes
     -----
     .. versionadded:: 0.4
+
+    References
+    ----------
+    .. [1] `A Riemannian Framework for Tensor Computing
+        <https://link.springer.com/article/10.1007/s11263-005-3222-z>`_
+        X. Pennec, P. Fillard, N. Ayache. IJCV, 2006, 66(1), pp. 41-66.
     """
     _check_dimensions(X, Cref)
     Cm12 = invsqrtm(Cref)
@@ -316,6 +411,49 @@ def log_map_riemann(X, Cref, C12=False):
         C12 = sqrtm(Cref)
         X_new = C12 @ X_new @ C12
     return X_new
+
+
+def log_map_wasserstein(X, Cref):
+    r"""Project matrices in tangent space by Wasserstein logarithmic map.
+
+    The projection of a matrix :math:`\mathbf{X}` from SPD/HPD manifold
+    to tangent space by the Wasserstein logarithmic map
+    according to a SPD/HPD reference matrix :math:`\mathbf{C}_\text{ref}` is
+    given in Proposition 9 of [1]_:
+
+    .. math::
+        \mathbf{X}_\text{new} = (\mathbf{X}\mathbf{C}_\text{ref})^{1/2} +
+        (\mathbf{C}_\text{ref}\mathbf{X})^{1/2} - 2\mathbf{C}_\text{ref}
+
+    Parameters
+    ----------
+    X : ndarray, shape (..., n, n)
+        Matrices in SPD/HPD manifold.
+    Cref : ndarray, shape (n, n)
+        Reference SPD/HPD matrix.
+
+    Returns
+    -------
+    X_new : ndarray, shape (..., n, n)
+        Matrices projected in tangent space.
+
+    Notes
+    -----
+    .. versionadded:: 0.8
+
+    References
+    ----------
+    .. [1] `Wasserstein Riemannian geometry of Gaussian densities
+        <https://link.springer.com/article/10.1007/s41884-018-0014-4>`_
+        L. Malagò, L. Montrucchio, G. Pistone. Information Geometry, 2018, 1,
+        pp. 137–179.
+    """
+    _check_dimensions(X, Cref)
+    P12 = sqrtm(Cref)
+    P12inv = invsqrtm(Cref)
+    sqrt_bracket = sqrtm(P12 @ X @ P12)
+    tmp = P12inv @ sqrt_bracket @ P12
+    return tmp + tmp.conj().swapaxes(-2, -1) - 2 * Cref
 
 
 def upper(X):
@@ -396,6 +534,7 @@ log_map_functions = {
     "logchol": log_map_logchol,
     "logeuclid": log_map_logeuclid,
     "riemann": log_map_riemann,
+    "wasserstein": log_map_wasserstein,
 }
 
 
@@ -413,7 +552,7 @@ def tangent_space(X, Cref, *, metric="riemann"):
         Reference matrix.
     metric : string | callable, default="riemann"
         Metric used for logarithmic map, can be:
-        "euclid", "logchol", "logeuclid", "riemann",
+        "euclid", "logchol", "logeuclid", "riemann", "wasserstein",
         or a callable function.
 
     Returns
@@ -440,6 +579,7 @@ exp_map_functions = {
     "logchol": exp_map_logchol,
     "logeuclid": exp_map_logeuclid,
     "riemann": exp_map_riemann,
+    "wasserstein": exp_map_wasserstein,
 }
 
 
@@ -457,7 +597,7 @@ def untangent_space(T, Cref, *, metric="riemann"):
         Reference matrix.
     metric : string | callable, default="riemann"
         Metric used for exponential map, can be:
-        "euclid", "logchol", "logeuclid", "riemann",
+        "euclid", "logchol", "logeuclid", "riemann", "wasserstein",
         or a callable function.
 
     Returns

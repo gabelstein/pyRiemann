@@ -15,6 +15,25 @@ v0.8.dev
 
 - Enhance :func:`pyriemann.utils.mean.mean_covariance` to support "power" and "poweuclid" metrics. :pr:`329` by :user:`qbarthelemy`
 
+- Add tangent space alignment (TSA) in transfer learning module.
+  ``TLStretch`` is deprecated and renamed into :class:`pyriemann.transfer._estimators.TLScale`,
+  and ``TSclassifier`` into :class:`pyriemann.classification.TSClassifier`. :pr:`320` by :user:`qbarthelemy`
+
+- Add an example using fNIRS data with a new estimator called `HybridBlocks` for classifying HbO and HbR signals. :pr:`323` by :user:`timnaher`
+
+- Add directional derivatives :func:`pyriemann.utils.base.ddexpm` and :func:`pyriemann.utils.base.ddlogm`,
+  and correct :func:`pyriemann.utils.tangentspace.log_map_logeuclid` and :func:`pyriemann.utils.tangentspace.exp_map_logeuclid`. :pr:`332` by :user:`gabelstein`
+
+- Add :func:`pyriemann.utils.tangentspace.exp_map_wasserstein`, :func:`pyriemann.utils.tangentspace.log_map_wasserstein`
+  and :func:`pyriemann.utils.geodesic.geodesic_wasserstein`. :pr:`331` by :user:`gabelstein`
+
+- Enhance :func:`pyriemann.datasets.make_matrices`, to generate symmetric and Hermitian matrices,
+  and add parameters defining the normal distribution to draw eigen vectors.
+  Deprecate ``generate_random_spd_matrix``. :pr:`339` by :user:`qbarthelemy`
+
+- Enhance TSA, adding weights to transformers, and generalizing :class:`pyriemann.classification.TLRotate` from
+  one-to-one to many-to-one domain adaptation in tangent space. :pr:`337` by :user:`qbarthelemy`
+
 v0.7 (October 2024)
 -------------------
 
